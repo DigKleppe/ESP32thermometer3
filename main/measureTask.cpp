@@ -4,6 +4,10 @@
  * Created on: Aug 9, 2021
  * Author: dig
  */
+ 
+ //java.lang.RuntimeException: java.util.concurrent.CompletionException: java.io.UncheckedIOException: java.io.IOException: Cannot run program "/home/dig/.espressif/tools/esp-clang/15.0.0-23786128ae/esp-clang/bin/clangd" (in directory "/home/dig"): error=2, No such file or directory
+
+// /home/dig/.espressif/tools/esp-clang/16.0.1-fe4f10a809/esp-clang/bin
 #include <string.h>
 
 #include <math.h>
@@ -161,6 +165,8 @@ void measureTask(void *pvParameters)
 
 	gpio_install_isr_service(1 << 3);
 	gpio_isr_handler_add(CAP_PIN, gpio_isr_handler, (void*) CAP_PIN);
+	gpio_set_level(CAP_PIN, 1);
+
 
 	for (int n = 0; n < NR_NTCS; n++)
 	{
@@ -183,17 +189,18 @@ void measureTask(void *pvParameters)
 		//ntc = 0;
 		// measure reference resistor
 		gpio_set_direction(CAP_PIN, GPIO_MODE_OUTPUT); // charge capacitor
-		gpio_set_level(CAP_PIN, 1);
+	//	gpio_set_level(CAP_PIN, 1);
 
 		vTaskDelay(CHARGETIME);
-		gpio_set_direction(RREF_PIN, GPIO_MODE_OUTPUT);  // set discharge resistor on
-
+//		gpio_set_direction(RREF_PIN, GPIO_MODE_OUTPUT);  // set discharge resistor on
+			
 		gpio_set_intr_type(CAP_PIN, GPIO_INTR_NEGEDGE);
-		if (xSemaphoreTake(measureSemaphore, portMAX_DELAY) == pdTRUE)
+	//	if (xSemaphoreTake(measureSemaphore, portMAX_DELAY) == pdTRUE)
 		{
+			xQueueReceive(gpio_evt_queue, &gpio_num, 0); // empty queue
+			gpio_set_direction(CAP_PIN, GPIO_MODE_INPUT); // charge capacitor off	
 			gptimer_set_raw_count(gptimer, 0);
-			gpio_set_direction(CAP_PIN, GPIO_MODE_INPUT); // discharge capacitor
-			xQueueReceive(gpio_evt_queue, &gpio_num, 0);
+			gpio_set_direction(RREF_PIN, GPIO_MODE_OUTPUT);  // set discharge resistor on
 			if (xQueueReceive(gpio_evt_queue, &gpio_num, 500))
 			{ // portMAX_DELAY)) {
 		//		print_timer_counter(timer_counter_value);
@@ -201,33 +208,34 @@ void measureTask(void *pvParameters)
 			}
 			else
 				printf(" No Ref ");
-			xSemaphoreGive(measureSemaphore);
+//			xSemaphoreGive(measureSemaphore);
 		}
-
+		gpio_set_direction(RREF_PIN, GPIO_MODE_INPUT); // ref off
 		refAverager.write(timer_counter_value - OFFSET);
-		refTimerValue = refAverager.average();
-		//	refTimerValue = timer_counter_value - OFFSET;
-		gpio_set_direction(RREF_PIN, GPIO_MODE_INPUT);
+		//refTimerValue = refAverager.average();
+		refTimerValue = timer_counter_value - OFFSET;
+
 		// measure NTC
 		gpio_set_direction(CAP_PIN, GPIO_MODE_OUTPUT); // charge capacitor
-		gpio_set_level(CAP_PIN, 1);
+	//	gpio_set_level(CAP_PIN, 1);
 
 		vTaskDelay(CHARGETIME);
 		gpio_set_intr_type(CAP_PIN, GPIO_INTR_NEGEDGE); // irq on again
-		gpio_set_level(NTCpins[ntc], 0);
-		gpio_set_direction(NTCpins[ntc], GPIO_MODE_OUTPUT);  // set discharge NTC on
+//		gpio_set_level(NTCpins[ntc], 0);
+//		gpio_set_direction(NTCpins[ntc], GPIO_MODE_OUTPUT);  // set discharge NTC on
 
-		xQueueReceive(gpio_evt_queue, &gpio_num, 0);
+		xQueueReceive(gpio_evt_queue, &gpio_num, 0); // empty queue
 
-		if (xSemaphoreTake(measureSemaphore, portMAX_DELAY) == pdTRUE)
+	//	if (xSemaphoreTake(measureSemaphore, portMAX_DELAY) == pdTRUE)
 		{
 			//	timer_set_counter_value(TIMER_GROUP_0, TIMER_1, 0);
-			gptimer_set_raw_count(gptimer, 0);
 			gpio_set_direction(CAP_PIN, GPIO_MODE_INPUT); // charge capacitor off
-
+			gptimer_set_raw_count(gptimer, 0);
+			gpio_set_direction(NTCpins[ntc], GPIO_MODE_OUTPUT);  // set discharge NTC on
+		
 			if (xQueueReceive(gpio_evt_queue, &gpio_num, 500))
 			{ // portMAX_DELAY)) {
-
+				gpio_set_direction(NTCpins[ntc], GPIO_MODE_INPUT);  // set discharge NTC off
 				//	int r = (int) ( RREF * ntcAverager[ntc].average()) / (float) refTimerValue; // averaged
 				int r = (int) ( RREF * timer_counter_value - OFFSET) / (float) refTimerValue; // real time
 				printf("*%4d\t", r);
@@ -246,7 +254,7 @@ void measureTask(void *pvParameters)
 				}
 				if (skip)
 				//	printf("*%2.3f\t", temp);
-					;
+					printf("%d: ------\t",ntc);
 				else
 				{
 				//	printf("%2.3f\t", temp);
@@ -254,7 +262,7 @@ void measureTask(void *pvParameters)
 				//	displayAverager[ntc].write((int32_t)(temp * 1000.0));
 					displayAverager[ntc].write(firstOrderAverager[ntc].average());
 
-					printf("%d: %2.2f\t",ntc, displayAverager[ntc].average()/1000.0);
+					printf("%d: %2.3f\t",ntc, displayAverager[ntc].average()/1000.0);
 
 					if (counts > 5)
 					{ // skip first measurements for log
@@ -277,10 +285,10 @@ void measureTask(void *pvParameters)
 				printf(" No NTC ");
 				lastTemperature[ntc] = ERRORTEMP;
 			}
-			xSemaphoreGive(measureSemaphore);
+//			xSemaphoreGive(measureSemaphore);
 		}
 
-		gpio_set_direction(NTCpins[ntc], GPIO_MODE_INPUT);  // set discharge NTC off
+
 
 		ntc++;
 		if (ntc == NR_NTCS)
