@@ -1,0 +1,1 @@
+/home/dig/programmas/esp32/esp-idf-v5.3.2/export.sh

@@ -1,0 +1,66 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <link rel="stylesheet" type="text/css" href="styles.css">
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script src="js/chart.js" type="text/javascript" charset="utf-8"></script>
+    <script src="js/common.js" type="text/javascript" charset="utf-8"></script>
+    <script type="text/javascript">
+	google.charts.load('current', {
+		'packages' : [ 'corechart' ]
+	});
+	google.charts.setOnLoadCallback(initChart);
+	google.load("visualization", "1", {packages:["corechart"]});
+	
+</script>
+  </head>
+  <body>
+
+    <table width="428" height="30">
+      <tbody>
+        <tr>
+          <th>t1</th>
+          <th>t2</th>
+          <th>t3</th>
+          <th>t4</th>
+          <th>tref</th>
+        </tr>
+        <tr>
+          <td>
+            <div id="t1"></div>
+          </td>
+          <td>
+            <div id="t2"></div>
+          </td>
+          <td>
+            <div id="t3"></div>
+          </td>
+          <td>
+            <div id="t4"></div>
+          </td>
+          <td>
+            <div id="t5"></div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="temperaturesChart" style="width: 900px; height: 500px"></div>
+    
+    <input type="checkbox" id="T1cb" class="save-cb-state" name="T1cb" value="yes">
+	<label for="T1cb">t1</label><br>
+	<input type="checkbox" id="T2cb" class="save-cb-state" name="T2cb" value="yes">
+	<label for="T2cb">t2</label><br>
+	<input type="checkbox" id="T3cb" class="save-cb-state"  name="T3cb" value="yes">
+	<label for="T3cb">t3</label><br>
+	<input type="checkbox" id="T4cb" class="save-cb-state"  name="T4cb" value="yes">
+	<label for="T4cb">t4</label><br>
+	<input type="checkbox" id="T5cb" class="save-cb-state"  name="T5cb" value="yes">
+	<label for="T5cb">tref</label><br>
+	
+	    
+    <a href="settings.html">Instellingen</a>
+  </body>
+      
+</html>
