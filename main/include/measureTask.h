@@ -23,14 +23,23 @@
 #define DISPLAYAVERAGES 64
 #define MAXSTRLEN		16
 
-#define RREF			10074			// in ohms
+#define RREF			10074.0			// in ohms
 #define CAP_PIN			GPIO_NUM_4
 #define RREF_PIN		GPIO_NUM_5
-#define NTC1_PIN		GPIO_NUM_5// 6
-#define NTC2_PIN		GPIO_NUM_5  //7
-#define NTC3_PIN		GPIO_NUM_5//   17
+#define NTC1_PIN		GPIO_NUM_6
+#define NTC2_PIN		GPIO_NUM_7
+#define NTC3_PIN		GPIO_NUM_17
 #define NTC4_PIN		GPIO_NUM_18
 
+
+//#define CAP_PIN			GPIO_NUM_4
+//#define RREF_PIN		GPIO_NUM_5
+//#define NTC1_PIN		GPIO_NUM_5// 6
+//#define NTC2_PIN		GPIO_NUM_5  //7
+//#define NTC3_PIN		GPIO_NUM_5//   17
+//#define NTC4_PIN		GPIO_NUM_5//18
+
+#define CHARGETIME 		200 // ms	  
 
 #define MEASINTERVAL			 	5 //interval for sensor in seconds
 #define LOGINTERVAL					1 // 5   //minutes
