@@ -1,5 +1,5 @@
 var SIMULATE = false;
-
+//var SIMULATE = true;
 var data2 = 0;
 var simValue1 = 0;
 var simValue2 = 0;
@@ -7,8 +7,6 @@ var simValue2 = 0;
 var ACTCOLLUMN = 1;
 var OFFSETCOLLUN = 2;
 var TEMPINFOROW = 1;
-var RHINFOROW = 2;
-var CO2INFOROW = 3;
 
 
 function sendItem(item) {

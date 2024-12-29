@@ -7,6 +7,7 @@
 
 //java.lang.RuntimeException: java.util.concurrent.CompletionException: java.io.UncheckedIOException: java.io.IOException: Cannot run program "/home/dig/.espressif/tools/esp-clang/15.0.0-23786128ae/esp-clang/bin/clangd" (in directory "/home/dig"): error=2, No such file or directory
 // /home/dig/.espressif/tools/esp-clang/16.0.1-fe4f10a809/esp-clang/bin
+#include <cstdio>
 #include <string.h>
 
 #include <math.h>
@@ -470,7 +471,8 @@ int getAvgMeasValuesScript(char *pBuffer, int count)
 		{
 			len += sprintf(pBuffer + len, "%3.2f,", (int) (logAverager[n].average() / 1000.0) - userSettings.temperatureOffset[n]);
 		}
-		len += sprintf(pBuffer + len, "%3.3f\n", 0.0); //  getTmp117AveragedTemperature());
+	//	len += sprintf(pBuffer + len, "%3.3f\n", 0.0); //  getTmp117AveragedTemperature());
+		len += sprintf(pBuffer + len, "\n");
 
 		return len;
 		break;
@@ -496,7 +498,9 @@ int getNewMeasValuesScript(char *pBuffer, int count)
 				len += sprintf(pBuffer + len, "%3.2f,", dayLog[dayLogRxIdx].temperature[n] - userSettings.temperatureOffset[n]);
 			}
 			//	len += sprintf(pBuffer + len, "%3.3f\n", dayLog[dayLogRxIdx].refTemperature);
-			len += sprintf(pBuffer + len, "%3.3f\n", 0.0);
+		//	len += sprintf(pBuffer + len, "%3.3f\n", 0.0);
+			len += sprintf(pBuffer + len, "\n");
+			
 			//	len += sprintf(pBuffer + len, "0.0\n");  // todo
 			dayLogRxIdx++;
 			if (dayLogRxIdx > MAXDAYLOGVALUES)
@@ -509,12 +513,15 @@ int getNewMeasValuesScript(char *pBuffer, int count)
 	return len;
 }
 
-// values of setcal not used, calibrate ( offset only against reference TMP117
 void parseCGIWriteData(char *buf, int received)
 {
 	if (strncmp(buf, "setCal:", 7) == 0)
 	{  //
-		float ref = (refSensorAverager.average() / 1000.0);
+
+//		float ref = (refSensorAverager.average() / 1000.0);
+		float ref;
+		sscanf((const char *) buf,"%f",&ref);
+				
 		for (int n = 0; n < NR_NTCS; n++)
 		{
 			if (lastTemperature[n] != ERRORTEMP)

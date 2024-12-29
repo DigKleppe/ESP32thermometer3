@@ -19,8 +19,8 @@ var MINUTESPERTICK = 5;// log interval
 var LOGDAYS = 7;
 var MAXPOINTS = LOGDAYS * 24 * 60 / MINUTESPERTICK;
 
-var displayNames = ["", "t1", "t2", "t3", "t4", "t5"];
-var cbIDs =["","T1cb", "T2cb", "T3cb", "T4cb", "T5cb"]; 
+var displayNames = ["", "t1", "t2", "t3", "t4"];
+var cbIDs =["","T1cb", "T2cb", "T3cb", "T4cb"]; 
 var chartSeries = [-1,-1,-1,-1,-1];
 
 var NRItems = displayNames.length;
@@ -65,11 +65,11 @@ function clear() {
 
 function plotTemperature(channel, value) {
 	if (chartRdy) {
-		if (channel == 1) {
-			tempData.addRow();
-			if (tempData.getNumberOfRows() > MAXPOINTS == true)
-				tempData.removeRows(0, tempData.getNumberOfRows() - MAXPOINTS);
-		}
+//		if (channel == 1) {
+//			tempData.addRow();
+//			if (tempData.getNumberOfRows() > MAXPOINTS == true)
+//				tempData.removeRows(0, tempData.getNumberOfRows() - MAXPOINTS);
+//		}
 		if (value != '--'){
 			if ( value > -50.0) {
 				value = parseFloat(value); // from string to float
@@ -176,7 +176,7 @@ function updateAllDayTimeLabels(data) {
 function simplot() {
 	simValue1 += 0.001;
 	simValue2 = Math.sin(simValue1) * 0.0001;
-	var str = "0,1,2,3,4,5,\n";
+	var str = "0,1,2,3,4\n";
 	var str2;
 	for (var n = 0; n < 20; n++)
 		str2 = str + str2;
@@ -203,6 +203,11 @@ function plotArray(str) {
 	for (var p = 0; p < nrPoints; p++) {
 		arr = arr2[p].split(",");
 		if (arr.length >= NRItems) {
+			tempData.addRow();
+			if (tempData.getNumberOfRows() > MAXPOINTS == true)
+				tempData.removeRows(0, tempData.getNumberOfRows() - MAXPOINTS);
+
+			
 			for (var m = 1; m < NRItems; m++) { // time not used for now
 			if (	chartSeries[m] != -1 )   
 				plotTemperature(chartSeries[m] , arr[m]); 
@@ -237,7 +242,11 @@ function timer() {
 				if (arr[0] > 0) {
 					if (arr[0] != lastTimeStamp) {
 						lastTimeStamp = arr[0];
-						for (var m = 1; m < NRItems; m++) { // time not used for now 
+						tempData.addRow();
+						if (tempData.getNumberOfRows() > MAXPOINTS == true)
+							tempData.removeRows(0, tempData.getNumberOfRows() - MAXPOINTS);
+						
+						for (var m = 1; m < NRItems; m++) { // time not used for now
 							var value = parseFloat(arr[m]); // from string to float
 							if (value < -100)
 								arr[m] = "--";
