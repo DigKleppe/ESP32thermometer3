@@ -161,7 +161,8 @@ esp_err_t loadSettings() {
 	if(strncmp(userSettings.checkstr,USERSETTINGS_CHECKSTR, strlen (USERSETTINGS_CHECKSTR) )	!= 0)
 	{
 		userSettings = userSettingsDefaults;
-		ESP_LOGE(TAG, "default usersettings loaded");
+		wifiSettings = wifiSettingsDefaults;
+		ESP_LOGE(TAG, "default settings loaded");
 		doSave = true;  // set filename for OTA via factory firmware
 	}
 

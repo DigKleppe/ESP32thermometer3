@@ -43,8 +43,8 @@ esp_err_t saveSettings(void);
 
 volatile  connectStatus_t connectStatus;
 
-#define EXAMPLE_ESP_WIFI_SSID      "xxx"
-#define EXAMPLE_ESP_WIFI_PASS      "yyy"
+#define EXAMPLE_ESP_WIFI_SSID      "Klepnet"
+#define EXAMPLE_ESP_WIFI_PASS      "Yellowstone1999"
 
 wifiSettings_t wifiSettings;
 //wifiSettings_t wifiSettingsDefaults = { CONFIG_EXAMPLE_WIFI_SSID, CONFIG_EXAMPLE_WIFI_PASSWORD,ipaddr_addr(DEFAULT_IPADDRESS),ipaddr_addr(DEFAULT_GW),CONFIG_DEFAULT_FIRMWARE_UPGRADE_URL,CONFIG_FIRMWARE_UPGRADE_FILENAME,false  };
@@ -56,7 +56,7 @@ wifiSettings_t wifiSettingsDefaults = { CONFIG_EXAMPLE_WIFI_SSID, CONFIG_EXAMPLE
  the config you want - ie #define EXAMPLE_WIFI_SSID "mywifissid"
  */
 
-#define EXAMPLE_ESP_MAXIMUM_RETRY  2
+#define EXAMPLE_ESP_MAXIMUM_RETRY  5
 #define EXAMPLE_H2E_IDENTIFIER 		""
 #define CONFIG_ESP_WPA3_SAE_PWE_BOTH 1
 #define ESP_WIFI_SAE_MODE WPA3_SAE_PWE_BOTH

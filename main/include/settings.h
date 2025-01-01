@@ -18,7 +18,7 @@
 
 
 #define MAX_STRLEN				 32
-#define USERSETTINGS_CHECKSTR 	"ttest-1"
+#define USERSETTINGS_CHECKSTR 	"ttest-4"
 
 
 typedef struct {

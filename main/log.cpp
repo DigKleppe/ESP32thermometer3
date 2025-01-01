@@ -32,7 +32,6 @@ void addToLog( log_t logValue)
 // reads all avaiable data from log
 // issued as first request.
 
-
 // reads all avaiable data from log
 // issued as first request.
 

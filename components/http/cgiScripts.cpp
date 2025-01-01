@@ -57,7 +57,7 @@ static const tCGI CGIurls[NUM_CGIurls] = {
 	};
 
 static const CGIdesc_t CGIdescriptors[] = {
-	//	{ "measValues", (void*) &measValues, STR, sizeof(measValues) / sizeof(char*) },
+		{ "measValues", (void*) &measValues, STR, sizeof(measValues) / sizeof(char*) },
 };
 // @formatter:on
 

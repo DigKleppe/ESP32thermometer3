@@ -230,7 +230,7 @@ static esp_err_t download_get_handler(httpd_req_t *req) {
 	if (strcmp(filename, "/") == 0)  // klp default
 		strcpy(filename, "/index.html");
 
-	ESP_LOGE(TAG, "req file: %s", filename);
+//	ESP_LOGE(TAG, "req file: %s", filename);
 
 	set_content_type_from_file(req, filename);
 	/* If name has trailing '/', respond with directory contents */
@@ -361,7 +361,7 @@ static esp_err_t download_get_handler(httpd_req_t *req) {
 		/* Close file after sending complete */
 		fclose(fd);
 	}
-	ESP_LOGI(TAG, "File sending complete %s (%ld bytes)", filename, file_stat.st_size);
+//	ESP_LOGI(TAG, "File sending complete %s (%ld bytes)", filename, file_stat.st_size);
 
 	/* Respond with an empty chunk to signal HTTP response completion */
 	httpd_resp_send_chunk(req, NULL, 0);
@@ -420,7 +420,7 @@ static esp_err_t upload_post_handler(httpd_req_t *req) {
 			return ESP_FAIL;
 		}
 	}
-	ESP_LOGI(TAG, "Receiving file : %s...", filepath);
+//	ESP_LOGI(TAG, "Receiving file : %s...", filepath);
 //	printf("Receiving file : %s...", filepath);
 
 	/* Retrieve the pointer to scratch buffer for temporary storage */

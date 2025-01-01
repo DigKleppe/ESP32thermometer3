@@ -20,29 +20,35 @@
 //#define SIMULATE 		1
 
 #define REFAVERAGES		64
-#define DISPLAYAVERAGES 64
+#define DISPLAYAVERAGES 8
 #define MAXSTRLEN		16
 
-#define RREF			10074.0			// in ohms
-#define CAP_PIN			GPIO_NUM_4
-#define RREF_PIN		GPIO_NUM_5
-#define NTC1_PIN		GPIO_NUM_6
-#define NTC2_PIN		GPIO_NUM_7
-#define NTC3_PIN		GPIO_NUM_17
-#define NTC4_PIN		GPIO_NUM_18
+//#define RREF			10074.0			// in ohms
 
 
 //#define CAP_PIN			GPIO_NUM_4
 //#define RREF_PIN		GPIO_NUM_5
-//#define NTC1_PIN		GPIO_NUM_5// 6
-//#define NTC2_PIN		GPIO_NUM_5  //7
-//#define NTC3_PIN		GPIO_NUM_5//   17
-//#define NTC4_PIN		GPIO_NUM_5//18
+//#define NTC1_PIN		GPIO_NUM_6
+//#define NTC2_PIN		GPIO_NUM_7
+//#define NTC3_PIN		GPIO_NUM_17
+//#define NTC4_PIN		GPIO_NUM_18
+
+#define RREF			10000.0			// in ohms
+#define CAP_PIN			GPIO_NUM_6
+#define COMPARATOR_PIN	GPIO_NUM_1
+
+#define RREF_PIN		GPIO_NUM_7
+#define NTC1_PIN		GPIO_NUM_7// 6
+#define NTC2_PIN		GPIO_NUM_7  //7
+#define NTC3_PIN		GPIO_NUM_7//   17
+#define NTC4_PIN		GPIO_NUM_7//18
+
+
 
 #define CHARGETIME 		200 // ms	  
 
 #define MEASINTERVAL			 	5 //interval for sensor in seconds
-#define LOGINTERVAL					1 // 5   //minutes
+#define LOGINTERVAL					5   //minutes
 #define AVGERAGESAMPLES				((LOGINTERVAL * 60)/(MEASINTERVAL))
 #define FIRSTORDERAVERAGES			6
 

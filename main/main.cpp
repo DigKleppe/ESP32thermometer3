@@ -118,27 +118,26 @@ void app_main() {
 		vTaskDelay(1000 / portTICK_PERIOD_MS);
 		upTime++;
 		
-		if ((connectStatus != IP_RECEIVED)) {
-			toggle = !toggle;
-			gpio_set_level(LED_PIN, toggle);
-		} else {
-			gpio_set_level(LED_PIN, false);
-
-			if (wifiSettings.updated) {
-				wifiSettings.updated = false;
-				saveSettings();
-			}
-			if (settingsChanged) {
-				settingsChanged = false;
-				vTaskDelay(1000 / portTICK_PERIOD_MS);
-				saveSettings();
-			}
-		//	stats_display();
-		}
-
-		//	stats_display();
+//		if ((connectStatus != IP_RECEIVED)) {
+//			toggle = !toggle;
+//			gpio_set_level(LED_PIN, toggle);
+//		} else {
+//			gpio_set_level(LED_PIN, false);
+//
+//			if (wifiSettings.updated) {
+//				wifiSettings.updated = false;
+//				saveSettings();
+//			}
+//			if (settingsChanged) {
+//				settingsChanged = false;
+//				vTaskDelay(1000 / portTICK_PERIOD_MS);
+//				saveSettings();
+//			}
+//		//	stats_display();
+//		}
+//
+//		//	stats_display();
 		}
 	}
 }
-
 
