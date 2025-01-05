@@ -23,29 +23,28 @@
 #define DISPLAYAVERAGES 8
 #define MAXSTRLEN		16
 
-//#define RREF			10074.0			// in ohms
+//#define RREF			10000.0			// in ohms
 
+#define RREF			10071.0			// in ohms
 
-//#define CAP_PIN			GPIO_NUM_4
-//#define RREF_PIN		GPIO_NUM_5
-//#define NTC1_PIN		GPIO_NUM_6
-//#define NTC2_PIN		GPIO_NUM_7
-//#define NTC3_PIN		GPIO_NUM_17
-//#define NTC4_PIN		GPIO_NUM_18
-
-#define RREF			10000.0			// in ohms
 #define CAP_PIN			GPIO_NUM_4
 #define COMPARATOR_PIN	GPIO_NUM_1
 
 #define RREF_PIN		GPIO_NUM_5
-#define NTC1_PIN		GPIO_NUM_5// 6
-#define NTC2_PIN		GPIO_NUM_5//7
-#define NTC3_PIN		GPIO_NUM_5//   17
-#define NTC4_PIN		GPIO_NUM_5//18
+#define NTC1_PIN		GPIO_NUM_6
+#define NTC2_PIN		GPIO_NUM_7
+#define NTC3_PIN		GPIO_NUM_17
+#define NTC4_PIN		GPIO_NUM_18
 
+//#define NTC1_PIN		GPIO_NUM_5// 6
+//#define NTC2_PIN		GPIO_NUM_5//7
+//#define NTC3_PIN		GPIO_NUM_5//   17
+//#define NTC4_PIN		GPIO_NUM_5//18
 
+#define RSERIES			270 // resistors in series with NTC 
 
 #define CHARGETIME 		200 // ms	  
+#define RCTIMEOUT		300 // ms
 
 #define MEASINTERVAL			 	5 //interval for sensor in seconds
 #define LOGINTERVAL					5   //minutes
@@ -67,12 +66,6 @@ extern SemaphoreHandle_t measureSemaphore; // to prevent from small influences o
 typedef struct {
 	float temperature[NR_NTCS];
 } calValues_t;
-
-//typedef struct {
-//	int32_t timeStamp;
-//	float temperature[NR_NTCS];
-//	float refTemperature;
-//} log_t;
 
 
 typedef struct {

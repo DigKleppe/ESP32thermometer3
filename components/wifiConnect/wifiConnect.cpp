@@ -179,7 +179,7 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
 			esp_wifi_connect();
 			connectStatus = CONNECTING;
 			s_retry_num++;
-			ESP_LOGI(TAG, "retry to connect to the AP");
+			ESP_LOGI(TAG, "retry to connect to %s",wifiSettings.SSID);
 		} else {
 			xTaskCreate(smartconfigTask, "smartconfig_example_task", 4096, NULL, 3, NULL);
 			s_retry_num = 0;

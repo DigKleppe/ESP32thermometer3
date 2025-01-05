@@ -301,7 +301,7 @@ static esp_err_t download_get_handler(httpd_req_t *req) {
 			do {
 				/* Read file in chunks into the scratch buffer */
 				chunksize = readResponseFile(chunk, SCRATCH_BUFSIZE);
-				ESP_LOGE(TAG, "sending %d bytes", chunksize);
+			//	ESP_LOGE(TAG, "sending %d bytes", chunksize);
 				if (chunksize > 0) {
 					/* Send the buffer contents as HTTP response chunk */
 					if (httpd_resp_send_chunk(req, chunk, chunksize) != ESP_OK) {

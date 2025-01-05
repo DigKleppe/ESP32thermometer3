@@ -111,6 +111,8 @@ void app_main() {
 	ESP_ERROR_CHECK(init_spiffs());
 
 	err = loadSettings();
+	ESP_LOGI(TAG, "connecting to %s",wifiSettings.SSID);
+	
 	xTaskCreate(&guiTask, "guiTask", 1024 * 4, NULL, 0, NULL);
 	xTaskCreate(&measureTask, "measureTask", 3500, NULL, 2, &measureTaskh);
 	wifiConnect();

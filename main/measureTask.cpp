@@ -220,7 +220,7 @@ void IRAM_ATTR measureTask(void *pvParameters) {
     gpio_set_direction(RREF_PIN, GPIO_MODE_OUTPUT); // set discharge resistor on
     if (xQueueReceive(
             gpio_evt_queue, &gpio_num,
-            500)) { // portMAX_DELAY))
+            RCTIMEOUT)) { // portMAX_DELAY))
                     //		print_timer_counter(timer_counter_value);
       ;
     } else
@@ -244,16 +244,18 @@ void IRAM_ATTR measureTask(void *pvParameters) {
     gptimer_set_raw_count(gptimer, 0);
     gpio_set_direction(NTCpin, GPIO_MODE_OUTPUT); // set discharge NTC on
 
-    if (xQueueReceive(gpio_evt_queue, &gpio_num, 500)) {
+    if (xQueueReceive(gpio_evt_queue, &gpio_num, RCTIMEOUT)) {
       gpio_set_direction(NTCpin, GPIO_MODE_INPUT); // set discharge NTC off
       //	int r = (int) ( RREF * ntcAverager[ntc].average()) / (float)
       //refTimerValue; // averaged
-      int r = (int)(RREF * (timer_counter_value - OFFSET)) /
+      uint64_t r = (uint64_t)(RREF * (timer_counter_value - OFFSET)) /
               (float)refTimerValue; // real time
       //	printf("%d: %d *%4d\t",ntc, refTimerValue, r);
-      printf("\t%d: r:%d %lld *%4lld ", ntc, r, refTimerValue,
-             timer_counter_value - OFFSET);
-
+      printf("%d: %4d\t",ntc, (int)r);
+    //  printf("\t%d: r:%d %lld *%4lld ", ntc, r, refTimerValue,
+    //         timer_counter_value - OFFSET);
+	  
+	  r -= RSERIES; // 	
       float temp = calcTemp(r);
       bool skip = false;
       if (temp > lastTemperature[ntc]) {
@@ -272,7 +274,7 @@ void IRAM_ATTR measureTask(void *pvParameters) {
         //	displayAverager[ntc].write((int32_t)(temp * 1000.0));
         displayAverager[ntc].write(firstOrderAverager[ntc].average());
         printf("t:%2.3f ", temp);
-  		printf("fo:%2.3f ", firstOrderAverager[ntc].average() / 1000.0);
+  	//	printf("fo:%2.3f ", firstOrderAverager[ntc].average() / 1000.0);
         printf("%2.3f\t", displayAverager[ntc].average() / 1000.0);
 
         if (counts > 5) { // skip first measurements for log
