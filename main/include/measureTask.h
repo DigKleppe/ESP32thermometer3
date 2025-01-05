@@ -34,14 +34,14 @@
 //#define NTC4_PIN		GPIO_NUM_18
 
 #define RREF			10000.0			// in ohms
-#define CAP_PIN			GPIO_NUM_6
+#define CAP_PIN			GPIO_NUM_4
 #define COMPARATOR_PIN	GPIO_NUM_1
 
-#define RREF_PIN		GPIO_NUM_7
-#define NTC1_PIN		GPIO_NUM_7// 6
-#define NTC2_PIN		GPIO_NUM_7  //7
-#define NTC3_PIN		GPIO_NUM_7//   17
-#define NTC4_PIN		GPIO_NUM_7//18
+#define RREF_PIN		GPIO_NUM_5
+#define NTC1_PIN		GPIO_NUM_5// 6
+#define NTC2_PIN		GPIO_NUM_5//7
+#define NTC3_PIN		GPIO_NUM_5//   17
+#define NTC4_PIN		GPIO_NUM_5//18
 
 
 
