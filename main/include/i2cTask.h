@@ -11,14 +11,14 @@
 #define MAIN_INCLUDE_I2CTASK_H_
 
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "freertos/queue.h"
+#include "freertos/task.h"
 
 void I2CTask(void *arg);
 
-extern  QueueHandle_t displayMssgbox;
+extern QueueHandle_t displayMssgbox;
 
-float getTmp117Temperature (void);
-float getTmp117AveragedTemperature (void);
+float getTmp117Temperature(void);
+float getTmp117AveragedTemperature(void);
 
 #endif /* MAIN_INCLUDE_I2CTASK_H_ */

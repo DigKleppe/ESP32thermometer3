@@ -2,8 +2,8 @@
  * Copyright (c) 2001-2003 Swedish Institute of Computer Science.
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
  * 1. Redistributions of source code must retain the above copyright notice,
  *    this list of conditions and the following disclaimer.
@@ -15,14 +15,14 @@
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
- * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
- * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
- * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
- * OF SUCH DAMAGE.
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
+ * EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * This file is part of the lwIP TCP/IP stack.
  *
@@ -38,14 +38,13 @@
 
 void httpd_init(void);
 
-//#define mem_malloc malloc
-//#define mem_free free
+// #define mem_malloc malloc
+// #define mem_free free
 //
 //
-//typedef enum  { ERR_OK, ERR_MEM } err_t;
+// typedef enum  { ERR_OK, ERR_MEM } err_t;
 
-
-//#ifdef INCLUDE_HTTPD_CGI
+// #ifdef INCLUDE_HTTPD_CGI
 
 /*
  * Function pointer for a CGI script handler.
@@ -77,28 +76,27 @@ void httpd_init(void);
  *
  */
 typedef char *(*tCGIHandler_t)(int, char *);
-typedef int  (*CGIresponseFileHandler_t)( char *, int);   // fread function for return CGI file
+typedef int (*CGIresponseFileHandler_t)(
+    char *, int); // fread function for return CGI file
 
 /*
  * Structure defining the base filename (URL) of a CGI and the associated
  * function which is to be called when that URL is requested.
  */
-typedef struct
-{
-    const char *pcCGIName;
-    tCGIHandler_t pfnCGIHandler;
-    CGIresponseFileHandler_t responseFileHandler;
- } tCGI;
+typedef struct {
+  const char *pcCGIName;
+  tCGIHandler_t pfnCGIHandler;
+  CGIresponseFileHandler_t responseFileHandler;
+} tCGI;
 
 void http_set_cgi_handlers(const tCGI *pCGIs, int iNumHandlers);
-
 
 /* The maximum number of parameters that the CGI handler can be sent. */
 #ifndef MAX_CGI_PARAMETERS
 #define MAX_CGI_PARAMETERS 16
 #endif
 
-//#endif
+// #endif
 
 #ifdef INCLUDE_HTTPD_SSI
 
@@ -133,8 +131,8 @@ void http_set_cgi_handlers(const tCGI *pCGIs, int iNumHandlers);
  */
 typedef int (*tSSIHandler)(int iIndex, char *pcInsert, int iInsertLen);
 
-void http_set_ssi_handler(tSSIHandler pfnSSIHandler,
-                          const char **ppcTags, int iNumTags);
+void http_set_ssi_handler(tSSIHandler pfnSSIHandler, const char **ppcTags,
+                          int iNumTags);
 
 /* The maximum length of the string comprising the tag name */
 #ifndef MAX_TAG_NAME_LEN

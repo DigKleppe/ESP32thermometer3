@@ -8,38 +8,35 @@
 #ifndef SETTINGS_H_
 #define SETTINGS_H_
 
-#include <stdbool.h>
 #include "esp_system.h"
-#include <time.h>
+#include <stdbool.h>
 #include <sys/time.h>
+#include <time.h>
 
 #include "cgiScripts.h"
 #include "measureTask.h"
 
-
-#define MAX_STRLEN				 32
-#define USERSETTINGS_CHECKSTR 	"ttest-4"
-
+#define MAX_STRLEN 32
+#define USERSETTINGS_CHECKSTR "ttest-4"
 
 typedef struct {
-	char spiffsVersion[16]; // holding current version
-	float temperatureOffset[NR_NTCS];
-	char moduleName[MAX_STRLEN+1];
-	char checkstr[MAX_STRLEN+1];
-}userSettings_t;
+  char spiffsVersion[16]; // holding current version
+  float temperatureOffset[NR_NTCS];
+  char moduleName[MAX_STRLEN + 1];
+  char checkstr[MAX_STRLEN + 1];
+} userSettings_t;
 
-//#ifndef varType_t
-//typedef enum { FLT, STR, INT , DESCR , CALVAL} varType_t;
-//#endif
+// #ifndef varType_t
+// typedef enum { FLT, STR, INT , DESCR , CALVAL} varType_t;
+// #endif
 
 typedef struct {
-	varType_t varType;
-	int size;
-	void * pValue;
-	int minValue;
-	int maxValue;
+  varType_t varType;
+  int size;
+  void *pValue;
+  int minValue;
+  int maxValue;
 } settingsDescr_t;
-
 
 extern settingsDescr_t settingsDescr[];
 extern bool settingsChanged;
@@ -47,17 +44,13 @@ extern bool settingsChanged;
 #ifdef __cplusplus
 extern "C" {
 #endif
-	esp_err_t saveSettings( void);
-	esp_err_t loadSettings( void);
+esp_err_t saveSettings(void);
+esp_err_t loadSettings(void);
 
 #ifdef __cplusplus
 }
 #endif
 
 extern userSettings_t userSettings;
-
-
-
-
 
 #endif /* SETTINGS_H_ */

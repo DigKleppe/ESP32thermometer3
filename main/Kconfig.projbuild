@@ -319,7 +319,7 @@ menu "Example Connection Configuration"
     endif
 endmenu
 
-menu "Example mdns Configuration"
+menu "mdns Configuration"
 
     config MDNS_HOSTNAME
         string "mDNS Hostname"
@@ -357,3 +357,17 @@ menu "Example mdns Configuration"
 
 endmenu
 
+menu "lvgl Configuration"
+    choice EXAMPLE_LCD_CONTROLLER
+        prompt "LCD controller model"
+        default EXAMPLE_LCD_CONTROLLER_ILI9341
+        help
+            Select LCD controller model
+
+        config EXAMPLE_LCD_CONTROLLER_ILI9341
+            bool "ILI9341"
+
+        config EXAMPLE_LCD_CONTROLLER_GC9A01
+            bool "GC9A01"
+    endchoice
+endmenu
