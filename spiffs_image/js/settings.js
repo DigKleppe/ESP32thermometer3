@@ -1,17 +1,19 @@
 
 var firstTime = true;
 var firstTimeCal = true;
+var firstTimeSettings = true;
 
 var body;
 var infoTbl;
-var calTbl;
+var settingsTbl;
 var nameTbl;
 var tblBody;
 var INFOTABLENAME = "infoTable";
+var SETTINGSTABLENAME = "settingsTable";
 var CALTABLENAME = "calTable";
 var NAMETABLENAME = "nameTable";
 
-function makeNameTable(descriptorData) {
+function makeNameTable(descriptorData) {firstTimeSettings
 	var colls;
 	nameTbl = document.getElementById(NAMETABLENAME);// ocument.createElement("table");
 	var x = nameTbl.rows.length;
@@ -71,7 +73,7 @@ function makeNameTable(descriptorData) {
 
 	const cells = document.querySelectorAll("td[nameItem]");
 	cells.forEach(cell => {
-		cell.addEventListener('click', function() { setNameFunction(cell.closest('tr').rowIndex, cell.cellIndex) });
+		cell.addEventListener('click', function () { setNameFunction(cell.closest('tr').rowIndex, cell.cellIndex) });
 	});
 }
 
@@ -121,13 +123,15 @@ function makeInfoTable(descriptorData) {
 	infoTbl.appendChild(tblBody);
 }
 
-function makeCalTable(descriptorData) {
+
+// for calibrating and settings
+function makeSettingsTable(tableName, descriptorData) {
 
 	var colls;
-	calTbl = document.getElementById(CALTABLENAME);// ocument.createElement("table");
-	var x = calTbl.rows.length;
+	settingsTbl = document.getElementById(tableName);
+	var x = settingsTbl.rows.length;
 	for (var r = 0; r < x; r++) {
-		calTbl.deleteRow(-1);
+		settingsTbl.deleteRow(-1);
 	}
 	tblBody = document.createElement("tbody");
 
@@ -180,11 +184,11 @@ function makeCalTable(descriptorData) {
 		}
 		tblBody.appendChild(row);
 	}
-	calTbl.appendChild(tblBody);
+	settingsTbl.appendChild(tblBody);
 
 	const cells = document.querySelectorAll("td[calItem]");
 	cells.forEach(cell => {
-		cell.addEventListener('click', function() { setCalFunction(cell.closest('tr').rowIndex, cell.cellIndex) });
+		cell.addEventListener('click', function () { setSettingFunction(cell.closest('tr').rowIndex, cell.cellIndex,tableName) });
 	});
 }
 
@@ -195,16 +199,32 @@ function readInfo(str) {
 function readCalInfo(str) {
 	if (SIMULATE) {
 		if (firstTimeCal) {
-			makeCalTable(str);
+			makeSettingsTable(CALTABLENAME, str);
 			firstTimeCal = false;
 		}
 		return;
 	}
 	else {
 		str = getItem("getCalValues");
-		makeCalTable(str);
+		makeSettingsTable(CALTABLENAME, str);
 	}
 }
+
+function readSettingsInfo(str) {
+	if (SIMULATE) {
+		if (firstTimeSettings) {
+			makeSettingsTable(SETTINGSTABLENAME, str);
+			firstTimeSettings = false;
+		}
+		return;
+	}
+	else {
+		str = getItem("getSettingValues");
+		makeSettingsTable(SETTINGSTABLENAME, str);
+	}
+}
+
+
 
 function save() {
 	getItem("saveSettings");
@@ -215,19 +235,20 @@ function cancel() {
 }
 
 
-function setCalFunction(row, coll) {
+function setSettingFunction(row, coll,tableName) {
+	var tbl = document.getElementById(tableName);
+
 	console.log("Row index:" + row + " Collumn: " + coll);
-	var item = calTbl.rows[row].cells[0].innerText;
+	var item = tbl.rows[row].cells[0].innerText;
 
 	if (coll == 3)
-		sendItem("revertCal:" + item);
+		sendItem("revertItem:"+ tableName + item);
 	else {
-		//	var x = calTbl.rows[2].cells[3].firstChild.value;
-		var value = calTbl.rows[row].cells[1].firstChild.value;
+		var value = tbl.rows[row].cells[1].firstChild.value;
 		console.log(item + value);
-	//	if (value != "") {
-			sendItem("setCal:" + item + '=' + value);
-	//	}
+		//	if (value != "") {
+		sendItem("setItem:" + tableName + item + '=' + value);
+		//	}
 	}
 }
 
@@ -244,19 +265,26 @@ function testCal() {
 	readCalInfo(str);
 }
 
+function testSettings() {
+	var str = "Item,Waarde,Stel in,Herstel,\nMiddelInterval\n Resolutie\n";
+	readSettingsInfo(str);
+}
+
+
+
 function initSettings() {
 	if (SIMULATE) {
 		testInfo();
 		testCal();
+		testSettings();
 	}
 	else {
-		//document.visibilityState
-
+		readCalInfo();
+		readSettingsInfo();
+		str = getItem("getSensorName");
+		makeNameTable(str);
+		setInterval(function () { settingsTimer() }, 1000);
 	}
-	readCalInfo();
-	str = getItem("getSensorName");
-	makeNameTable(str);
-	setInterval(function() { settingsTimer() }, 1000);
 }
 
 function tempCal() {

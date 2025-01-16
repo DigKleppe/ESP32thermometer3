@@ -34,6 +34,13 @@ static const char *TAG = "main";
 
 const gpio_num_t LED_PIN = GPIO_NUM_2;
 
+uint32_t timeStamp;
+
+void vTimerCallback(TimerHandle_t xTimer)
+{
+	timeStamp++;
+}
+
 extern "C"
 {
 	void app_main()
@@ -44,6 +51,7 @@ extern "C"
 		int timeOut = 0;
 		uint32_t upTime = 0;
 		bool toggle = false;
+		TimerHandle_t xTimer;
 
 		//	char newStorageVersion[MAX_STORAGEVERSIONSIZE] = { };
 
@@ -68,6 +76,9 @@ extern "C"
 		err = loadSettings();
 		ESP_LOGI(TAG, "connecting to %s", wifiSettings.SSID);
 
+		xTimer = xTimerCreate("Timer", 10, pdTRUE, (void *)0, vTimerCallback);
+		xTimerStart(xTimer, 0);
+
 		xTaskCreate(&guiTask, "guiTask", 1024 * 8, NULL, 0, NULL);
 		xTaskCreate(&measureTask, "measureTask", 3500, NULL, 2, NULL);
 		wifiConnect();
@@ -75,7 +86,7 @@ extern "C"
 		displayMssg.line = 5;
 		displayMssg.str1 = line;
 		displayMssg.displayItem = DISPLAY_ITEM_MEASLINE;
-        displayMssg.showTime = 0;
+		displayMssg.showTime = 0;
 
 		while (1)
 		{
@@ -103,7 +114,7 @@ extern "C"
 					vTaskDelay(1000 / portTICK_PERIOD_MS);
 					saveSettings();
 				}
-                
+
 				sprintf(line, "%s  %s", wifiSettings.SSID, myIpAddress);
 				xQueueSend(displayMssgBox, &displayMssg, 0);
 

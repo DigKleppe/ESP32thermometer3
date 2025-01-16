@@ -1,13 +1,4 @@
-var SIMULATE = false;
-//var SIMULATE = true;
-var data2 = 0;
-var simValue1 = 0;
-var simValue2 = 0;
-
-var ACTCOLLUMN = 1;
-var OFFSETCOLLUN = 2;
-var TEMPINFOROW = 1;
-
+var SIMULATE = true;
 
 function sendItem(item) {
 	console.log("sendItem: " + item);
@@ -42,62 +33,42 @@ function getItem(item) {
 		}
 	}
 }
-// returns array with accumulated momentary values
-function getLogMeasValues() {
-	console.log("getLogMeasValues");
-	if (SIMULATE)
-		return "OK";
 
+function getAllLogs() {
 	var str;
 	var req = new XMLHttpRequest();
-	req.open("GET", "cgi-bin/getLogMeasValues", false);
+	req.open("GET", "cgi-bin/getAllLogs", false);
 	req.send();
 	if (req.readyState == 4) {
 		if (req.status == 200) {
 			str = req.responseText.toString();
 			return str;
-			//	var arr = str.split(",");
-			//	return arr;
 		}
 	}
 }
 
-// returns array minute  averaged values
-function getAvgMeasValues() {
-	console.log("getAvgMeasValues");
-	if (SIMULATE)
-		return "OK";
-
+function getNewLogs() {
 	var str;
 	var req = new XMLHttpRequest();
-	req.open("GET", "cgi-bin/getAvgMeasValues", false);
+	req.open("GET", "cgi-bin/getNewLogs", false);
 	req.send();
 	if (req.readyState == 4) {
 		if (req.status == 200) {
 			str = req.responseText.toString();
 			return str;
-			//	var arr = str.split(",");
-			//	return arr;
 		}
 	}
 }
 
-// returns array with momentarty  values
-function getRTMeasValues() {
-	console.log("getRTMeasValues");
-	if (SIMULATE)
-		return "OK";
-
+function clearRemoteLog() {
 	var str;
 	var req = new XMLHttpRequest();
-	req.open("GET", "cgi-bin/getRTMeasValues", false);
+	req.open("GET", "cgi-bin/clearLog", false);
 	req.send();
 	if (req.readyState == 4) {
 		if (req.status == 200) {
 			str = req.responseText.toString();
 			return str;
-			//	var arr = str.split(",");
-			//	return arr;
 		}
 	}
 }
