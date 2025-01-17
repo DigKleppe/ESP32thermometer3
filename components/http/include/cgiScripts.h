@@ -11,18 +11,7 @@
 #include "../../http/include/httpd.h"
 #define CGIRETURNFILE "/CGIreturn.txt"
 
-extern bool sendBackOK;
-
-extern CGIresponseFileHandler_t readResponseFile;
-
-int actionRespScript(char *pBuffer, int count);
-int freadCGI(char *buffer, int count);
-void CGI_init(void);
-
-extern const tCGI *g_pCGIs;
-extern int g_iNumCGIs;
 typedef enum { FLT, STR, INT, DESCR, CALVAL } varType_t;
-
 typedef struct {
   const char *name;
   void *pValue;
@@ -30,8 +19,13 @@ typedef struct {
   int nrValues;
 } CGIdesc_t;
 
+extern bool sendBackOK;
+extern CGIresponseFileHandler_t readResponseFile;
 extern const CGIdesc_t writeVarDescriptors[];
+int actionRespScript(char *pBuffer, int count);
+int freadCGI(char *buffer, int count);
+int readVarScript(char *pBuffer, int count);
 void parseCGIWriteData(char *buf, int received);
 bool readActionScript(char *pcParam, const CGIdesc_t *CGIdescTable, int size);
-
+char *readCGIvalues(int iIndex, char *pcParam);
 #endif /* HTTPD_CGI_H_ */

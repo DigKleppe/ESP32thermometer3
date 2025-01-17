@@ -23,6 +23,8 @@ typedef struct {
   char spiffsVersion[16]; // holding current version
   float temperatureOffset[NR_NTCS];
   char moduleName[MAX_STRLEN + 1];
+  int resolution;
+  int middleInterval;
   char checkstr[MAX_STRLEN + 1];
 } userSettings_t;
 
@@ -38,7 +40,7 @@ typedef struct {
   int maxValue;
 } settingsDescr_t;
 
-extern settingsDescr_t settingsDescr[];
+//extern const settingsDescr_t settingsDescr[];
 extern bool settingsChanged;
 
 #ifdef __cplusplus

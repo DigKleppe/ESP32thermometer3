@@ -7,21 +7,18 @@
 #include "log.h"
 #include <stdint.h>
 
-uint32_t timeStamp = 1;
 int dayLogRxIdx;
 int dayLogTxIdx;
 
-// int logPrescaler = LOGINTERVAL;
+extern uint32_t timeStamp;
+extern int scriptState;
 
 log_t accumulator;
 log_t dayLog[MAXDAYLOGVALUES];
 
-extern int scriptState;
-
 void addToLog(log_t logValue)
 {
 	logValue.timeStamp = timeStamp;
-
 	dayLog[dayLogTxIdx] = logValue;
 	dayLogTxIdx++;
 	if (dayLogTxIdx >= MAXDAYLOGVALUES)

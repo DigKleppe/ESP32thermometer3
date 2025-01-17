@@ -35,6 +35,12 @@ volatile bool newDescriptorsReceived;
 volatile bool newCalValueReceived;
 double calValue;
 
+
+CGIurlDesc_t * getCGIurlsTable();
+
+
+//extern const CGIurlDesc_t CGIurls[]; // to be defined in the main program
+
 esp_err_t httpd_send_all(httpd_req_t *r, const char *buf, size_t buf_len);
 
 /* Scratch buffer size */
@@ -233,6 +239,8 @@ static esp_err_t download_get_handler(httpd_req_t *req) {
   bool foundCGI = false;
   bool sendFile = true;
   char *chunk;
+  
+  const CGIurlDesc_t *g_pCGIs = getCGIurlsTable(); 
 
   char *filename = (char *)get_path_from_uri(
       filepath, ((struct file_server_data *)req->user_ctx)->base_path, req->uri,
@@ -271,8 +279,8 @@ static esp_err_t download_get_handler(httpd_req_t *req) {
       params++;
     }
     /* Does the base URI we have isolated correspond to a CGI handler? */
-    if (g_iNumCGIs && g_pCGIs) {
-      for (i = 0; i < g_iNumCGIs; i++) {
+    if (g_pCGIs) {
+      for (i = 0; (g_pCGIs->pfnCGIHandler != NULL); i++) {
         if (strncmp(filename, g_pCGIs[i].pcCGIName,
                     strlen(g_pCGIs[i].pcCGIName)) == 0) {
           //		LWIP_DEBUGF(HTTPD_DEBUG,
@@ -288,7 +296,7 @@ static esp_err_t download_get_handler(httpd_req_t *req) {
       }
       /* Did we handle this URL as a CGI? If not, reinstate the
        * original URL and pass it to the file system directly. */
-      if (i == g_iNumCGIs) {
+      if (g_pCGIs->pfnCGIHandler != NULL) {
         /* Replace the ? marker at the beginning of the parameters */
         if (params) {
           params--;
@@ -666,7 +674,7 @@ static esp_err_t delete_post_handler(httpd_req_t *req) {
 /* Function to start the file server */
 esp_err_t start_file_server(const char *base_path) {
   static struct file_server_data *server_data = NULL;
-  CGI_init();
+  
   /* Validate file storage base path */
   if (!base_path || strcmp(base_path, "/spiffs") != 0) {
     ESP_LOGE(TAG, "File server presently supports only '/spiffs' as base path");

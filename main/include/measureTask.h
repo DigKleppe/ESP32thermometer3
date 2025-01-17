@@ -80,7 +80,7 @@ int getRTMeasValuesScript(char *pBuffer, int count);
 int getNewMeasValuesScript(char *pBuffer, int count);
 int getLogScript(char *pBuffer, int count);
 int getInfoValuesScript(char *pBuffer, int count);
-int getCalValuesScript(char *pBuffer, int count);
+int buildCalTable(char *pBuffer, int count);
 int saveSettingsScript(char *pBuffer, int count);
 int cancelSettingsScript(char *pBuffer, int count);
 int calibrateRespScript(char *pBuffer, int count);

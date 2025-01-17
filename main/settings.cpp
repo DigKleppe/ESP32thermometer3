@@ -23,7 +23,10 @@ char checkstr[MAX_STRLEN + 1];
 const userSettings_t userSettingsDefaults = {"0.0",        // spiffsVersion[16]
                                              {0, 0, 0, 0}, // temperatureOffsets
                                              {CONFIG_MDNS_HOSTNAME},
-                                             USERSETTINGS_CHECKSTR};
+                                             { 2 }, // resolution
+                                             { 5 }, // middleInterval
+                                             {USERSETTINGS_CHECKSTR}
+};
 
 userSettings_t userSettings;
 

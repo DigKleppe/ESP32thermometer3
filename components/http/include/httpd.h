@@ -87,9 +87,9 @@ typedef struct {
   const char *pcCGIName;
   tCGIHandler_t pfnCGIHandler;
   CGIresponseFileHandler_t responseFileHandler;
-} tCGI;
+} CGIurlDesc_t;
 
-void http_set_cgi_handlers(const tCGI *pCGIs, int iNumHandlers);
+void http_set_cgi_handlers(const CGIurlDesc_t *pCGIs, int iNumHandlers);
 
 /* The maximum number of parameters that the CGI handler can be sent. */
 #ifndef MAX_CGI_PARAMETERS
