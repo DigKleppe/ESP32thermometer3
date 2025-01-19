@@ -37,15 +37,15 @@
 
 static const char *TAG = "measureTask";
 
-#define TIMER_BASE_CLK                                                                                                 \
-	(APB_CLK_FREQ)									 /*!< Frequency of the clock on the input of the timer groups      \
+#define TIMER_BASE_CLK                                                                                                                               \
+	(APB_CLK_FREQ)									 /*!< Frequency of the clock on the input of the timer groups                                    \
 													  */
 #define TIMER_DIVIDER (32)							 //  Hardware timer clock divider
 #define TIMER_SCALE (TIMER_BASE_CLK / TIMER_DIVIDER) // convert counter value to seconds
 
 #define OFFSET 24 // counter value  measured without capacitor (at timer divider 8)
 
-#define MAXDELTA 0.4 // if temperature delta > this value measure again.
+#define MAXDELTA 1.0 // if temperature delta > this value measure again.
 
 extern float tmpTemperature;
 extern int scriptState;
@@ -59,10 +59,6 @@ bool sensorDataIsSend;
 uint64_t timer_counter_value;
 int irqcntr;
 measValues_t measValues;
-// log_t tLog[ MAXLOGVALUES];
-////static log_t lastVal;
-// int logTxIdx;
-// int logRxIdx;
 
 Averager firstOrderAverager[NR_NTCS]; // first order
 Averager logAverager[NR_NTCS];		  // second order
@@ -133,6 +129,8 @@ void IRAM_ATTR measureTask(void *pvParameters)
 	log_t log;
 	float stdev;
 	gpio_num_t NTCpin;
+	int oldDisplayAverages;
+	int oldLogInterval;
 
 	// while(1)
 	// 	vTaskDelay(100);
@@ -191,10 +189,14 @@ void IRAM_ATTR measureTask(void *pvParameters)
 		gpio_set_level(NTCpins[ntc], 0);
 		logAverager[n].setAverages(AVGERAGESAMPLES);
 		firstOrderAverager[n].setAverages(FIRSTORDERAVERAGES);
-		displayAverager[n].setAverages(DISPLAYAVERAGES);
+		//	displayAverager[n].setAverages(DISPLAYAVERAGES);
+		displayAverager[n].setAverages(userSettings.middleInterval);
 		lastTemperature[n] = ERRORTEMP;
 		gpio_set_drive_capability(NTCpins[n], GPIO_DRIVE_CAP_3);
 	}
+	oldDisplayAverages = userSettings.middleInterval;
+	oldLogInterval = userSettings.logInterval;
+
 	//	while(1) {
 	//		testLog();
 	//		vTaskDelay(10);
@@ -278,7 +280,7 @@ void IRAM_ATTR measureTask(void *pvParameters)
 				//	printf("fo:%2.3f ", firstOrderAverager[ntc].average() / 1000.0);
 				printf("%2.3f\t", displayAverager[ntc].average() / 1000.0);
 
-				if (counts > 5)
+				if (counts > 3)
 				{ // skip first measurements for log
 					//	logAverager[ntc].write(firstOrderAverager[ntc].average());
 					logAverager[ntc].write(displayAverager[ntc].average());
@@ -309,38 +311,51 @@ void IRAM_ATTR measureTask(void *pvParameters)
 			ntc = 0;
 			printf("\n");
 			time(&now);
-			localtime_r(&now, &timeinfo); // no use in low power mode
+			localtime_r(&now, &timeinfo);
 			if (lastminute != timeinfo.tm_min)
 			{
 				lastminute = timeinfo.tm_min; // every minute
-				if (logPrescaler-- == 0)
+				if (--logPrescaler <= 0)
 				{
-					logPrescaler = LOGINTERVAL;
-
 					for (int n = 0; n < NR_NTCS; n++)
 					{
 						log.temperature[n] = logAverager[n].average() / 1000.0;
 					}
-					log.refTemperature = 0.0;
 					addToLog(log);
+
+					if (oldLogInterval != userSettings.logInterval)
+					{
+						oldLogInterval = userSettings.logInterval;
+						saveSettings();	
+					}
+					logPrescaler = userSettings.logInterval;
 				}
 			}
 			displayMssg.displayItem = DISPLAY_ITEM_MEASLINE;
 			displayMssg.showTime = 0;
+			char fmt[6];
+
+			snprintf(fmt, 6, "%%2.%df", userSettings.resolution);
 			for (int n = 0; n < NR_NTCS; n++)
 			{
 				displayMssg.line = n + 1;
 				if (lastTemperature[n] == ERRORTEMP)
 					snprintf(line, MAXCHARSPERLINE, "-");
 				else
-					// snprintf(line, MAXCHARSPERLINE, "t%d : %2.2f", n + 1, lastTemperature[n]);
-					snprintf(line, MAXCHARSPERLINE, "%2.3f", displayAverager[n].average() / 1000.0);
+					snprintf(line, MAXCHARSPERLINE, fmt, displayAverager[n].average() / 1000.0);
 				xQueueReceive(displayReadyMssgBox, &displayMssg, 100);
 				xQueueSend(displayMssgBox, &displayMssg, 500 / portTICK_PERIOD_MS);
-				xQueueReceive(displayReadyMssgBox, &displayMssg, 500);
+				xQueueReceive(displayReadyMssgBox, &displayMssg, 100);
 			}
 			// vTaskDelayUntil(&xLastWakeTime, MEASINTERVAL * 1000 /
 			// portTICK_PERIOD_MS);
+			if (oldDisplayAverages != userSettings.middleInterval)
+			{
+				oldDisplayAverages = userSettings.middleInterval;
+				for (int n = 0; n < NR_NTCS; n++)
+					displayAverager[n].setAverages(userSettings.middleInterval);
+				saveSettings();	
+			}
 		}
 		//	vTaskDelayUntil(&xLastWakeTime, MEASINTERVAL * 1000 /
 		// portTICK_PERIOD_MS);
@@ -353,15 +368,17 @@ void IRAM_ATTR measureTask(void *pvParameters)
 #include "cgiScripts.h"
 
 int buildSettingsTable(char *pBuffer, int count);
+int actionRespScript(char *pBuffer, int count);
+int freadCGI(char *buffer, int count);
+int readVarScript(char *pBuffer, int count);
 
+bool readActionScript(char *pcParam, const CGIdesc_t *CGIdescTable, int size);
+char *readCGIvalues(int iIndex, char *pcParam);
 
 const CGIurlDesc_t CGIurls[] = {
-	{"/cgi-bin/readvar", (tCGIHandler_t)readCGIvalues,
-	 (CGIresponseFileHandler_t)readVarScript}, // !!!!!! leave this index  !!
-	{"/cgi-bin/writevar", (tCGIHandler_t)readCGIvalues,
-	 (CGIresponseFileHandler_t)readVarScript}, // !!!!!! leave this index  !!
-	{"/action_page.php", (tCGIHandler_t)readCGIvalues,
-	 (CGIresponseFileHandler_t)actionRespScript}, // !!!!!! leave this index  !!
+	{"/cgi-bin/readvar", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)readVarScript},	// !!!!!! leave this index  !!
+	{"/cgi-bin/writevar", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)readVarScript},	// !!!!!! leave this index  !!
+	{"/action_page.php", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)actionRespScript}, // !!!!!! leave this index  !!
 	{"/cgi-bin/getLogMeasValues", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)getDayLogScript},
 	{"/cgi-bin/getRTMeasValues", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)getRTMeasValuesScript},
 	{"/cgi-bin/getInfoValues", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)getInfoValuesScript},
@@ -372,19 +389,20 @@ const CGIurlDesc_t CGIurls[] = {
 	{"/cgi-bin/cancelSettings", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)cancelSettingsScript},
 	{"", NULL, NULL}};
 
-const CGIdesc_t CGIdescriptors[] = {{"measValues", (void *)&measValues, STR, sizeof(measValues) / sizeof(char *)},
-									{"", NULL, INT, 0}};
+const CGIdesc_t CGIdescriptors[] = {{"measValues", (void *)&measValues, STR, sizeof(measValues) / sizeof(char *)}, {"", NULL, INT, 0}};
 
 const CGIdesc_t settingsDescr[] = {{"MiddelInterval", &userSettings.middleInterval, INT, 1},
+								   {"LogInterval (min)", &userSettings.logInterval, INT, 1},
 								   {"Resolutie", &userSettings.resolution, INT, 1},
 								   {"", NULL, INT, 0}};
 
-
-CGIurlDesc_t * getCGIurlsTable() {
+CGIurlDesc_t *getCGIurlsTable()
+{
 	return (CGIurlDesc_t *)CGIurls;
 }
 
-CGIdesc_t *getSettingsDescriptorTable() {
+CGIdesc_t *getSettingsDescriptorTable()
+{
 	return (CGIdesc_t *)settingsDescr;
 }
 
@@ -417,9 +435,8 @@ int getInfoValuesScript(char *pBuffer, int count)
 		for (int n = 0; n < NR_NTCS; n++)
 		{
 			sprintf(str, "Sensor %d", n + 1);
-			len +=
-				sprintf(pBuffer + len, "%s,%3.2f,%3.2f\n", str, lastTemperature[n] - userSettings.temperatureOffset[n],
-						userSettings.temperatureOffset[n]); // send values and offset
+			len += sprintf(pBuffer + len, "%s,%3.2f,%3.2f\n", str, lastTemperature[n] - userSettings.temperatureOffset[n],
+						   userSettings.temperatureOffset[n]); // send values and offset
 		};
 		return len;
 		break;
@@ -439,7 +456,7 @@ int buildCalTable(char *pBuffer, int count)
 	case 0:
 		scriptState++;
 		len += sprintf(pBuffer + len, "%s\n", "Meting,Referentie,Stel in,Herstel"); // header  table
-		len += sprintf(pBuffer + len, "%s\n", "Sensor 1\n Sensor 2\n Sensor 3\n Sensor 4\n");
+		len += sprintf(pBuffer + len, "%s\n", "Sensor 1,-\n Sensor 2,-\n Sensor 3,-\n Sensor 4,-\n");
 		return len;
 		break;
 	default:
@@ -455,9 +472,10 @@ int buildSettingsTable(char *pBuffer, int count)
 	case 0:
 		scriptState++;
 		len += sprintf(pBuffer + len, "%s\n", "Item,Waarde,Stel in,Herstel"); // header  table
-		for (int n = 0; (settingsDescr->nrValues > 0); n++)
+		for (int n = 0; (settingsDescr[n].nrValues > 0); n++)
 		{ // loop over all settings names
-			len += sprintf(pBuffer + len, "%s\n", settingsDescr[n].name);
+			len += sprintf(pBuffer + len, "%s,", settingsDescr[n].name);
+			len += sprintf(pBuffer + len, "%d\n", *(int *)(settingsDescr[n].pValue));
 		}
 		return len;
 		break;
@@ -483,8 +501,7 @@ calValues_t calValues = {NOCAL, NOCAL, NOCAL, NOCAL};
 // @formatter:off
 char tempName[MAX_STRLEN];
 
-const CGIdesc_t writeVarDescriptors[] = {{"Temperatuur", &calValues.temperature, FLT, NR_NTCS},
-										 {"moduleName", tempName, STR, 1}};
+const CGIdesc_t writeVarDescriptors[] = {{"Temperatuur", &calValues.temperature, FLT, NR_NTCS}, {"moduleName", tempName, STR, 1}};
 
 #define NR_CALDESCRIPTORS (sizeof(writeVarDescriptors) / sizeof(CGIdesc_t))
 // @formatter:on
@@ -526,8 +543,7 @@ int getAvgMeasValuesScript(char *pBuffer, int count)
 		len = sprintf(pBuffer + len, "%ld,", timeStamp);
 		for (int n = 0; n < NR_NTCS; n++)
 		{
-			len += sprintf(pBuffer + len, "%3.2f,",
-						   (int)(logAverager[n].average() / 1000.0) - userSettings.temperatureOffset[n]);
+			len += sprintf(pBuffer + len, "%3.2f,", (int)(logAverager[n].average() / 1000.0) - userSettings.temperatureOffset[n]);
 		}
 		//	len += sprintf(pBuffer + len, "%3.3f\n", 0.0); //
 		// getTmp117AveragedTemperature());
@@ -553,8 +569,7 @@ int getNewMeasValuesScript(char *pBuffer, int count)
 			len += sprintf(pBuffer + len, "%d,", (int)dayLog[dayLogRxIdx].timeStamp);
 			for (int n = 0; n < NR_NTCS; n++)
 			{
-				len += sprintf(pBuffer + len, "%3.2f,",
-							   dayLog[dayLogRxIdx].temperature[n] - userSettings.temperatureOffset[n]);
+				len += sprintf(pBuffer + len, "%3.2f,", dayLog[dayLogRxIdx].temperature[n] - userSettings.temperatureOffset[n]);
 			}
 			//	len += sprintf(pBuffer + len, "%3.3f\n",
 			// dayLog[dayLogRxIdx].refTemperature);

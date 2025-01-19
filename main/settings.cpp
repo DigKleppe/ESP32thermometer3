@@ -24,7 +24,8 @@ const userSettings_t userSettingsDefaults = {"0.0",        // spiffsVersion[16]
                                              {0, 0, 0, 0}, // temperatureOffsets
                                              {CONFIG_MDNS_HOSTNAME},
                                              { 2 }, // resolution
-                                             { 5 }, // middleInterval
+                                             { 5 }, // middleInterval for display
+                                             { 5 }, //loginterval in minutes
                                              {USERSETTINGS_CHECKSTR}
 };
 

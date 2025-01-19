@@ -51,7 +51,7 @@
 #define MEASINTERVAL 5 // interval for sensor in seconds
 #define LOGINTERVAL 5  // minutes
 #define AVGERAGESAMPLES ((LOGINTERVAL * 60) / (MEASINTERVAL))
-#define FIRSTORDERAVERAGES 6
+#define FIRSTORDERAVERAGES 4
 
 #define NOCAL 99999
 

@@ -149,14 +149,19 @@ function makeSettingsTable(tableName, descriptorData) {
 			}
 		}
 		else {
+			
+			var strs = rows[i].split(",");
+
 			var cell = document.createElement("td");
-			var cellText = document.createTextNode(rows[i]);
+			//var cellText = document.createTextNode(rows[i]);
+			var cellText = document.createTextNode(strs[0]);
 			cell.appendChild(cellText);
 			row.appendChild(cell);
 
 			cell = document.createElement("td");
 			var input = document.createElement("input");
 			input.setAttribute("type", "number");
+			input.value = strs[1];
 			cell.appendChild(input);
 			row.appendChild(cell);
 
@@ -219,7 +224,7 @@ function readSettingsInfo(str) {
 		return;
 	}
 	else {
-		str = getItem("getSettingValues");
+		str = getItem("getSettingsTable");
 		makeSettingsTable(SETTINGSTABLENAME, str);
 	}
 }
