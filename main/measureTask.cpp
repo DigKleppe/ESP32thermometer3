@@ -391,7 +391,7 @@ const CGIurlDesc_t CGIurls[] = {
 	{"/cgi-bin/getInfoValues", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)getInfoValuesScript},
 	{"/cgi-bin/getCalValues", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)buildCalTable},
 	{"/cgi-bin/getSettingsTable", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)buildSettingsTable},
-//	{"/cgi-bin/getSensorName", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)getSensorNameScript},
+	{"/cgi-bin/getRTMeasValues", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)getRTMeasValuesScript},
 	{"/cgi-bin/saveSettings", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)saveSettingsScript},
 	{"/cgi-bin/cancelSettings", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)cancelSettingsScript},
 	{"", NULL, NULL}};
@@ -541,87 +541,30 @@ const CGIdesc_t writeVarDescriptors[] = {{"Temperatuur", &calValues.temperature,
 #define NR_CALDESCRIPTORS (sizeof(writeVarDescriptors) / sizeof(CGIdesc_t))
 // @formatter:on
 
-// int getRTMeasValuesScript(char *pBuffer, int count)
-// {
-// 	int len = 0;
+int getRTMeasValuesScript(char *pBuffer, int count)
+{
+	int len = 0;
 
-// 	switch (scriptState)
-// 	{
-// 	case 0:
-// 		scriptState++;
+	switch (scriptState)
+	{
+	case 0:
+		scriptState++;
 
-// 		len = sprintf(pBuffer + len, "%u,", (unsigned int)timeStamp++);
-// 		for (int n = 0; n < NR_NTCS; n++)
-// 		{
-// 			len += sprintf(pBuffer + len, "%3.2f,", lastTemperature[n] - userSettings.temperatureOffset[n]);
-// 		}
-// 		len += sprintf(pBuffer + len, "\n");
-// 		return len;
-// 		break;
-// 	default:
-// 		break;
-// 	}
-// 	return 0;
-// }
+		len = sprintf(pBuffer + len, "%u,", (unsigned int)timeStamp++);
+		for (int n = 0; n < NR_NTCS; n++)
+		{
+			len += sprintf(pBuffer + len, "%3.2f,", lastTemperature[n] - userSettings.temperatureOffset[n]);
+		}
+		len += sprintf(pBuffer + len, "\n");
+		return len;
+		break;
+	default:
+		break;
+	}
+	return 0;
+}
 
-// // reads averaged values
 
-// int getAvgMeasValuesScript(char *pBuffer, int count)
-// {
-// 	int len = 0;
-
-// 	switch (scriptState)
-// 	{
-// 	case 0:
-// 		scriptState++;
-
-// 		len = sprintf(pBuffer + len, "%ld,", timeStamp);
-// 		for (int n = 0; n < NR_NTCS; n++)
-// 		{
-// 			len += sprintf(pBuffer + len, "%3.2f,", (int)(logAverager[n].average() / 1000.0) - userSettings.temperatureOffset[n]);
-// 		}
-// 		//	len += sprintf(pBuffer + len, "%3.3f\n", 0.0); //
-// 		// getTmp117AveragedTemperature());
-// 		len += sprintf(pBuffer + len, "\n");
-
-// 		return len;
-// 		break;
-// 	default:
-// 		break;
-// 	}
-// 	return 0;
-// }
-// // these functions only work for one user!
-
-// int getNewMeasValuesScript(char *pBuffer, int count)
-// {
-
-// 	int left, len = 0;
-// 	if (logRxIdx != (logRxIdx))
-// 	{ // something to send?
-// 		do
-// 		{
-// 			len += sprintf(pBuffer + len, "%d,", (int)dayLog[dayLogRxIdx].timeStamp);
-// 			for (int n = 0; n < NR_NTCS; n++)
-// 			{
-// 				len += sprintf(pBuffer + len, "%3.2f,", dayLog[dayLogRxIdx].temperature[n] - userSettings.temperatureOffset[n]);
-// 			}
-// 			//	len += sprintf(pBuffer + len, "%3.3f\n",
-// 			// dayLog[dayLogRxIdx].refTemperature);
-// 			//	len += sprintf(pBuffer + len, "%3.3f\n", 0.0);
-// 			len += sprintf(pBuffer + len, "\n");
-
-// 			//	len += sprintf(pBuffer + len, "0.0\n");  // todo
-// 			logRxIdx++;
-// 			if (logRxIdx > MAXLOGVALUES)
-// 				logRxIdx = 0;
-// 			left = count - len;
-
-// 		} while ((logRxIdx != logTxIdx) && (left > 40));
-// 	}
-// 	return len;
-// }
-// " setItem:calTable:Sensor 1= 22"
 void parseCGIWriteData(char *buf, int received)
 {
 	parseCGIsettings (buf, received);

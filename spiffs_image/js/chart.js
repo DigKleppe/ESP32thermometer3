@@ -83,24 +83,6 @@ function plot(channel, value, timeStamp) {
 	}
 }
 
-
-
-function plotTemperatureOld(channel, value) {
-	if (chartRdy) {
-		//		if (channel == 1) {
-		//			tempData.addRow();
-		//			if (tempData.getNumberOfRows() > MAXPOINTS == true)
-		//				tempData.removeRows(0, tempData.getNumberOfRows() - MAXPOINTS);
-		//		}
-		if (value != '--') {
-			if (value > -50.0) {
-				value = parseFloat(value); // from string to float
-				chartData.setValue(chartData.getNumberOfRows() - 1, channel, value);
-			}
-		}
-	}
-}
-
 function loadCBs() {
 	var cbstate;
 
@@ -248,6 +230,10 @@ function plotArray(str) {
 			}
 		}
 		chart.draw(chartData, options);
+		for (var m = 1; m < NRItems; m++) {
+			var value = arr[m]; // arr holds last sample print in main form
+			document.getElementById(displayNames[m]).innerHTML = value;
+		}
 	}
 }
 
@@ -262,12 +248,19 @@ function timer() {
 			if (firstRequest) {
 				arr = getAllLogs();
 				firstRequest = false;
-				setInterval(function() { timer() }, 10000);
+				setInterval(function () { timer() }, 10000);
 			}
 			else {
 				arr = getNewLogs();
 			}
 			plotArray(arr);
+
+			arr = getItem("getRTMeasValues");
+			var arr2 = arr.split(",");
+			for (var m = 1; m < NRItems; m++) {
+				var value = arr2[m]; // arr holds last sample print in main form
+				document.getElementById(displayNames[m]).innerHTML = value;
+			}
 		}
 	}
 }
