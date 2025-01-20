@@ -252,85 +252,22 @@ function plotArray(str) {
 }
 
 
-
-function plotArrayOld(str) {
-	var arr;
-	var arr2 = str.split("\n");
-	var nrPoints = arr2.length - 1;
-
-	var mm = 0;
-
-	let now = new Date();
-	var today = now.getDay();
-	var hours = now.getHours();
-	var minutes = now.getMinutes();
-
-	for (var p = 0; p < nrPoints; p++) {
-		arr = arr2[p].split(",");
-		if (arr.length >= NRItems) {
-			chartData.addRow();
-			if (chartData.getNumberOfRows() > MAXPOINTS == true)
-				chartData.removeRows(0, chartData.getNumberOfRows() - MAXPOINTS);
-
-
-			for (var m = 1; m < NRItems; m++) { // time not used for now
-				if (chartSeries[m] != -1)
-					plotTemperature(chartSeries[m], arr[m]);
-			}
-		}
-	}
-	if (nrPoints == 1) { // then single point added 
-		updateLastDayTimeLabel(chartData);
-	}
-	else {
-		updateAllDayTimeLabels(chartData);
-	}
-	chart.draw(chartData, options);
-}
-
 function timer() {
 	var arr;
-	var str;
-	presc--
-
 	if (SIMULATE) {
 		simplot();
 	}
 	else {
-		if (presc == 0) {
-			presc = REQINTERVAL;
-
-			str = getRTMeasValues();
-			arr = str.split(",");
-			// print RT values 
-			if (arr.length >= NRItems) {
-				if (arr[0] > 0) {
-					if (arr[0] != lastTimeStamp) {
-						lastTimeStamp = arr[0];
-						chartData.addRow();
-						if (chartData.getNumberOfRows() > MAXPOINTS == true)
-							chartData.removeRows(0, chartData.getNumberOfRows() - MAXPOINTS);
-
-						for (var m = 1; m < NRItems; m++) { // time not used for now
-							var value = parseFloat(arr[m]); // from string to float
-							if (value < -100)
-								arr[m] = "--";
-							document.getElementById(displayNames[m]).innerHTML = arr[m];
-							if (chartSeries[m] != -1)
-								plotTemperature(chartSeries[m], arr[m]);
-						}
-
-						updateLastDayTimeLabel(chartData);
-						chart.draw(chartData, options);
-					}
-				}
-			}
-
+		if (!halt) {
 			if (firstRequest) {
-				arr = getLogMeasValues();
-				plotArray(arr);
+				arr = getAllLogs();
 				firstRequest = false;
+				setInterval(function() { timer() }, 10000);
 			}
+			else {
+				arr = getNewLogs();
+			}
+			plotArray(arr);
 		}
 	}
 }

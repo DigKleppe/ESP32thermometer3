@@ -373,6 +373,11 @@ int actionRespScript(char *pBuffer, int count);
 int freadCGI(char *buffer, int count);
 int readVarScript(char *pBuffer, int count);
 
+int getAllLogsScript(char *pBuffer, int count);
+int getNewLogsScript(char *pBuffer, int count);
+int clearLogScript(char *pBuffer, int count);
+
+
 bool readActionScript(char *pcParam, const CGIdesc_t *CGIdescTable, int size);
 char *readCGIvalues(int iIndex, char *pcParam);
 
@@ -380,8 +385,9 @@ const CGIurlDesc_t CGIurls[] = {
 	{"/cgi-bin/readvar", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)readVarScript},	// !!!!!! leave this index  !!
 	{"/cgi-bin/writevar", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)readVarScript},	// !!!!!! leave this index  !!
 	{"/action_page.php", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)actionRespScript}, // !!!!!! leave this index  !!
-	{"/cgi-bin/getLogMeasValues", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)getDayLogScript},
-	{"/cgi-bin/getRTMeasValues", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)getRTMeasValuesScript},
+	{ "/cgi-bin/getAllLogs", (tCGIHandler_t) readCGIvalues, (CGIresponseFileHandler_t) getAllLogsScript},
+	{ "/cgi-bin/getNewLogs", (tCGIHandler_t) readCGIvalues, (CGIresponseFileHandler_t) getNewLogsScript},
+	{ "/cgi-bin/clearLog", (tCGIHandler_t) readCGIvalues, (CGIresponseFileHandler_t) clearLogScript},
 	{"/cgi-bin/getInfoValues", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)getInfoValuesScript},
 	{"/cgi-bin/getCalValues", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)buildCalTable},
 	{"/cgi-bin/getSettingsTable", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)buildSettingsTable},
@@ -410,6 +416,17 @@ CGIdesc_t *getSettingsDescriptorTable()
 {
 	return (CGIdesc_t *)settingsDescr;
 }
+
+int printLog(log_t * logToPrint, char *pBuffer) {
+	int len;
+	len = sprintf(pBuffer, "%d,", (int) logToPrint->timeStamp);
+	for (int n = 0; n < NR_NTCS; n++) {
+		len += sprintf(pBuffer + len, "%3.2f,", logToPrint->temperature[n]-userSettings.temperatureOffset[n]);
+	}
+	len += sprintf(pBuffer + len, "\n");
+	return len;
+}
+
 // // todo remove this , include with other settings
 // int getSensorNameScript(char *pBuffer, int count)
 // {
@@ -524,86 +541,86 @@ const CGIdesc_t writeVarDescriptors[] = {{"Temperatuur", &calValues.temperature,
 #define NR_CALDESCRIPTORS (sizeof(writeVarDescriptors) / sizeof(CGIdesc_t))
 // @formatter:on
 
-int getRTMeasValuesScript(char *pBuffer, int count)
-{
-	int len = 0;
+// int getRTMeasValuesScript(char *pBuffer, int count)
+// {
+// 	int len = 0;
 
-	switch (scriptState)
-	{
-	case 0:
-		scriptState++;
+// 	switch (scriptState)
+// 	{
+// 	case 0:
+// 		scriptState++;
 
-		len = sprintf(pBuffer + len, "%u,", (unsigned int)timeStamp++);
-		for (int n = 0; n < NR_NTCS; n++)
-		{
-			len += sprintf(pBuffer + len, "%3.2f,", lastTemperature[n] - userSettings.temperatureOffset[n]);
-		}
-		len += sprintf(pBuffer + len, "\n");
-		return len;
-		break;
-	default:
-		break;
-	}
-	return 0;
-}
+// 		len = sprintf(pBuffer + len, "%u,", (unsigned int)timeStamp++);
+// 		for (int n = 0; n < NR_NTCS; n++)
+// 		{
+// 			len += sprintf(pBuffer + len, "%3.2f,", lastTemperature[n] - userSettings.temperatureOffset[n]);
+// 		}
+// 		len += sprintf(pBuffer + len, "\n");
+// 		return len;
+// 		break;
+// 	default:
+// 		break;
+// 	}
+// 	return 0;
+// }
 
-// reads averaged values
+// // reads averaged values
 
-int getAvgMeasValuesScript(char *pBuffer, int count)
-{
-	int len = 0;
+// int getAvgMeasValuesScript(char *pBuffer, int count)
+// {
+// 	int len = 0;
 
-	switch (scriptState)
-	{
-	case 0:
-		scriptState++;
+// 	switch (scriptState)
+// 	{
+// 	case 0:
+// 		scriptState++;
 
-		len = sprintf(pBuffer + len, "%ld,", timeStamp);
-		for (int n = 0; n < NR_NTCS; n++)
-		{
-			len += sprintf(pBuffer + len, "%3.2f,", (int)(logAverager[n].average() / 1000.0) - userSettings.temperatureOffset[n]);
-		}
-		//	len += sprintf(pBuffer + len, "%3.3f\n", 0.0); //
-		// getTmp117AveragedTemperature());
-		len += sprintf(pBuffer + len, "\n");
+// 		len = sprintf(pBuffer + len, "%ld,", timeStamp);
+// 		for (int n = 0; n < NR_NTCS; n++)
+// 		{
+// 			len += sprintf(pBuffer + len, "%3.2f,", (int)(logAverager[n].average() / 1000.0) - userSettings.temperatureOffset[n]);
+// 		}
+// 		//	len += sprintf(pBuffer + len, "%3.3f\n", 0.0); //
+// 		// getTmp117AveragedTemperature());
+// 		len += sprintf(pBuffer + len, "\n");
 
-		return len;
-		break;
-	default:
-		break;
-	}
-	return 0;
-}
-// these functions only work for one user!
+// 		return len;
+// 		break;
+// 	default:
+// 		break;
+// 	}
+// 	return 0;
+// }
+// // these functions only work for one user!
 
-int getNewMeasValuesScript(char *pBuffer, int count)
-{
+// int getNewMeasValuesScript(char *pBuffer, int count)
+// {
 
-	int left, len = 0;
-	if (dayLogRxIdx != (dayLogTxIdx))
-	{ // something to send?
-		do
-		{
-			len += sprintf(pBuffer + len, "%d,", (int)dayLog[dayLogRxIdx].timeStamp);
-			for (int n = 0; n < NR_NTCS; n++)
-			{
-				len += sprintf(pBuffer + len, "%3.2f,", dayLog[dayLogRxIdx].temperature[n] - userSettings.temperatureOffset[n]);
-			}
-			//	len += sprintf(pBuffer + len, "%3.3f\n",
-			// dayLog[dayLogRxIdx].refTemperature);
-			//	len += sprintf(pBuffer + len, "%3.3f\n", 0.0);
-			len += sprintf(pBuffer + len, "\n");
+// 	int left, len = 0;
+// 	if (logRxIdx != (logRxIdx))
+// 	{ // something to send?
+// 		do
+// 		{
+// 			len += sprintf(pBuffer + len, "%d,", (int)dayLog[dayLogRxIdx].timeStamp);
+// 			for (int n = 0; n < NR_NTCS; n++)
+// 			{
+// 				len += sprintf(pBuffer + len, "%3.2f,", dayLog[dayLogRxIdx].temperature[n] - userSettings.temperatureOffset[n]);
+// 			}
+// 			//	len += sprintf(pBuffer + len, "%3.3f\n",
+// 			// dayLog[dayLogRxIdx].refTemperature);
+// 			//	len += sprintf(pBuffer + len, "%3.3f\n", 0.0);
+// 			len += sprintf(pBuffer + len, "\n");
 
-			//	len += sprintf(pBuffer + len, "0.0\n");  // todo
-			dayLogRxIdx++;
-			if (dayLogRxIdx > MAXDAYLOGVALUES)
-				dayLogRxIdx = 0;
-			left = count - len;
+// 			//	len += sprintf(pBuffer + len, "0.0\n");  // todo
+// 			logRxIdx++;
+// 			if (logRxIdx > MAXLOGVALUES)
+// 				logRxIdx = 0;
+// 			left = count - len;
 
-		} while ((dayLogRxIdx != dayLogTxIdx) && (left > 40));
-	}
-	return len;
-}
+// 		} while ((logRxIdx != logTxIdx) && (left > 40));
+// 	}
+// 	return len;
+// }
 // " setItem:calTable:Sensor 1= 22"
 void parseCGIWriteData(char *buf, int received)
 {

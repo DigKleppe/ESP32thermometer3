@@ -5,80 +5,62 @@
  *      Author: dig
  */
 #include "log.h"
-#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
 
-int dayLogRxIdx;
-int dayLogTxIdx;
-
-extern uint32_t timeStamp;
+int printLog(log_t *logToPrint, char *pBuffer);
 extern int scriptState;
 
-log_t accumulator;
-log_t dayLog[MAXDAYLOGVALUES];
+int logRxIdx;
+int logTxIdx;
+static log_t measLog[ MAXLOGVALUES];
 
-void addToLog(log_t logValue)
-{
-	logValue.timeStamp = timeStamp;
-	dayLog[dayLogTxIdx] = logValue;
-	dayLogTxIdx++;
-	if (dayLogTxIdx >= MAXDAYLOGVALUES)
-		dayLogTxIdx = 0;
+void addToLog(log_t logValue) {
+	measLog[logTxIdx] = logValue;
+	measLog[logTxIdx].timeStamp = timeStamp;
+	logTxIdx++;
+	if (logTxIdx >= MAXLOGVALUES)
+		logTxIdx = 0;
 }
 
-// reads all avaiable data from log
+// reads all available data from log
 // issued as first request.
 
-// reads all avaiable data from log
-// issued as first request.
-
-int getDayLogScript(char *pBuffer, int count)
-{
-	static int oldTimeStamp = 0;
+int getAllLogsScript(char *pBuffer, int count) {
+	static time_t oldTimeStamp = 0;
 	static int logsToSend = 0;
 	int left, len = 0;
 	int n;
-	if (scriptState == 0)
-	{ // find oldest value in cyclic logbuffer
-		dayLogRxIdx = 0;
-		if (dayLog[dayLogRxIdx].timeStamp == 0)
+	if (scriptState == 0) { // find oldest value in cyclic logbuffer
+		logRxIdx = 0;
+		if (measLog[logRxIdx].timeStamp == 0)
 			return 0; // empty
 
 		oldTimeStamp = 0;
-		for (n = 0; n < MAXDAYLOGVALUES; n++)
-		{
-			if (dayLog[dayLogRxIdx].timeStamp < oldTimeStamp)
+		for (n = 0; n < MAXLOGVALUES; n++) {
+			if (measLog[logRxIdx].timeStamp < oldTimeStamp)
 				break;
-			else
-			{
-				oldTimeStamp = dayLog[dayLogRxIdx++].timeStamp;
+			else {
+				oldTimeStamp = measLog[logRxIdx++].timeStamp;
 			}
 		}
-		if (dayLog[dayLogRxIdx].timeStamp == 0)
-		{ // then log not full
+		if (measLog[logRxIdx].timeStamp == 0) { // then log not full
 			// not written yet?
-			dayLogRxIdx = 0;
+			logRxIdx = 0;
 			logsToSend = n;
-		}
-		else
-			logsToSend = MAXDAYLOGVALUES;
+		} else
+			logsToSend = MAXLOGVALUES;
 		scriptState++;
 	}
-	if (scriptState == 1)
-	{ // send complete buffer
-		if (logsToSend)
-		{
-			do
-			{
-				len += sprintf(pBuffer + len, "%ld,", dayLog[dayLogRxIdx].timeStamp);
-				for (n = 0; n < NR_NTCS; n++)
-					len += sprintf(pBuffer + len, "%3.2f,",
-								   dayLog[dayLogRxIdx].temperature[n] - userSettings.temperatureOffset[n]);
-
-				len += sprintf(pBuffer + len, "\n");
-
-				dayLogRxIdx++;
-				if (dayLogRxIdx >= MAXDAYLOGVALUES)
-					dayLogRxIdx = 0;
+	if (scriptState == 1) { // send complete buffer
+		if (logsToSend) {
+			len = 0;
+			do {
+				len += printLog(&measLog[logRxIdx], pBuffer + len);
+				logRxIdx++;
+				if (logRxIdx >= MAXLOGVALUES)
+					logRxIdx = 0;
 				left = count - len;
 				logsToSend--;
 
@@ -86,4 +68,46 @@ int getDayLogScript(char *pBuffer, int count)
 		}
 	}
 	return len;
+}
+
+// these functions only work for one user!
+
+int getNewLogsScript(char *pBuffer, int count) {
+
+	int left, len = 0;
+	if (logRxIdx != (logTxIdx)) {  // something to send?
+		do {
+			len += printLog(&measLog[logRxIdx], pBuffer + len);
+			logRxIdx++;
+			if (logRxIdx >= MAXLOGVALUES)
+				logRxIdx = 0;
+			left = count - len;
+
+		} while ((logRxIdx != logTxIdx) && (left > 40));
+
+	}
+	return len;
+}
+
+int clearLogScript(char *pBuffer, int count) {
+	if (scriptState == 0) { // find oldest value in cyclic logbuffer
+		logRxIdx = 0;
+		logTxIdx = 0;
+		memset(&measLog, 0, sizeof( measLog));
+		strcpy(pBuffer, "OK");
+		scriptState++;
+		return 3;
+	}
+	return 0;
+}
+
+void testLog( void) {
+	// log_t testlog;
+	// testlog.unit[0]= 'V';
+	// testlog.unit[1]= 0;
+	// for ( int n = 0; n < MAXLOGVALUES; n++) {
+	// 	testlog.measValue = sin ((float)n / 100);
+	// 	timeStamp++;
+	// 	addToLog(testlog);
+	// }
 }
