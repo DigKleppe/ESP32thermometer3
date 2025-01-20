@@ -32,7 +32,7 @@
 
 static const char *TAG = "main";
 
-const gpio_num_t LED_PIN = GPIO_NUM_2;
+const gpio_num_t LED_PIN = GPIO_NUM_9;
 
 uint32_t timeStamp;
 
