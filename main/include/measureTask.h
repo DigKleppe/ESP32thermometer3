@@ -87,4 +87,6 @@ int calibrateRespScript(char *pBuffer, int count);
 int getSensorNameScript(char *pBuffer, int count);
 void parseCGIWriteData(char *buf, int received);
 
+CGIdesc_t *getSettingsDescriptorTable();
+
 #endif /* MAIN_INCLUDE_MEASURETASK_H_ */

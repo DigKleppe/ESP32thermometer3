@@ -15,8 +15,10 @@ typedef enum { FLT, STR, INT, DESCR, CALVAL } varType_t;
 typedef struct {
   const char *name;
   void *pValue;
-  varType_t type;
+  varType_t varType;
   int nrValues;
+  int minValue;
+  int maxValue;
 } CGIdesc_t;
 
 extern bool sendBackOK;

@@ -134,7 +134,7 @@ bool readActionScript(char *pcParam, const CGIdesc_t *CGIdescTable, int size)
 					{ // found
 						if (p[n + 1] != '&')
 						{ // empty value
-							switch (CGIdescTable->type)
+							switch (CGIdescTable->varType)
 							{
 							case FLT:
 								sscanf(&p[n + 1], "%f",
@@ -281,7 +281,7 @@ int readVarScript(char *pBuffer, int count)
 	case 0:
 		nrChars = sprintf(pntr, "%s", http_html_hdr);
 		pntr += nrChars;
-		if (settingsDescrTable[todoIndex].type == DESCR)
+		if (settingsDescrTable[todoIndex].varType == DESCR)
 		{
 			pDescr = (settingsDescr_t *)settingsDescrTable[todoIndex].pValue;
 			while (pDescr->size > 0)
@@ -317,7 +317,7 @@ int readVarScript(char *pBuffer, int count)
 		{
 			for (int n = 0; n < nrValues; n++)
 			{
-				switch (settingsDescrTable[todoIndex].type)
+				switch (settingsDescrTable[todoIndex].varType)
 				{
 				case FLT:
 					cnt = sprintf(pntr, "%2.1f", *(float *)pValue);

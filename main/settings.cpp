@@ -9,8 +9,10 @@
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "wifiConnect.h"
+#include "split.h"
 #include <cerrno>
 #include <string.h>
+
 
 #define STORAGE_NAMESPACE "storage"
 
@@ -90,8 +92,66 @@ userSettings_t userSettings;
 #define STORAGE_NAMESPACE "storage"
 
 static const char *TAG = "Settings";
+CGIdesc_t* getSettingsDescriptorTable();
 
-// bool settingsChanged;
+void parseCGIsettings (char *buf, int received) {
+
+	CGIdesc_t* settingsDescr = getSettingsDescriptorTable();
+
+  std::string foo = buf;
+	std::vector<std::string> results;
+	split(foo, ":", results);
+  if (results.size() < 4)
+  {
+    printf("parseCGIsettings: too few arguments %d\n" , results.size());
+    printf(" %s\n" , buf);
+    
+    return;
+  }
+  
+  printf( "%s %s %s %s\n" , results[0].c_str(), results[1].c_str(), results[2].c_str(), results[3].c_str());
+
+  if ( strcmp(results[0].c_str(), "setItem") == 0)
+	{
+    while (settingsDescr->name != NULL) {
+       printf( "  %s " ,(char *) settingsDescr->name);
+  
+      if (strcmp(results[2].c_str(), settingsDescr->name) == 0)
+      {
+        switch (settingsDescr->varType)
+        {
+        case INT:
+          int val;
+          sscanf((const char *)results[3].c_str(), "%d", &val);
+          if (val >= settingsDescr->minValue && val <= settingsDescr->maxValue)
+          {
+            *(int *)settingsDescr->pValue = val;
+            settingsChanged = true;
+          }
+          break;
+        case FLT:
+          float fval;
+          sscanf((const char *)results[3].c_str(), "%f", &fval);
+          if (fval >= settingsDescr->minValue && fval <= settingsDescr->maxValue)
+          {
+            *(float *)settingsDescr->pValue = fval;
+            settingsChanged = true;
+          }
+          break;
+        case STR:
+          strcpy((char *)settingsDescr->pValue, results[3].c_str());
+          settingsChanged = true;
+          break;
+        default:
+          break;
+        }
+      }
+      settingsDescr++;
+    }
+  }
+}
+
+
 extern "C" {
 
 esp_err_t saveSettings(void) {

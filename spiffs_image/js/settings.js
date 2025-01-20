@@ -252,7 +252,7 @@ function setSettingFunction(row, coll,tableName) {
 		var value = tbl.rows[row].cells[1].firstChild.value;
 		console.log(item + value);
 		//	if (value != "") {
-		sendItem("setItem:" + tableName + item + '=' + value);
+		sendItem("setItem:" + tableName + ":" + item + ':' + value);
 		//	}
 	}
 }
@@ -286,8 +286,8 @@ function initSettings() {
 	else {
 		readCalInfo();
 		readSettingsInfo();
-		str = getItem("getSensorName");
-		makeNameTable(str);
+	//	str = getItem("getSensorName");
+//		makeNameTable(str);
 		setInterval(function () { settingsTimer() }, 1000);
 	}
 }

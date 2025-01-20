@@ -55,5 +55,6 @@ esp_err_t loadSettings(void);
 #endif
 
 extern userSettings_t userSettings;
+void parseCGIsettings (char *buf, int received); 
 
 #endif /* SETTINGS_H_ */

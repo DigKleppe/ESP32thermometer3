@@ -92,6 +92,11 @@ extern "C"
 		{
 			vTaskDelay(1000 / portTICK_PERIOD_MS);
 			upTime++;
+			if (settingsChanged)
+			{
+				settingsChanged = false;
+				saveSettings();
+			}
 			if ((connectStatus != IP_RECEIVED))
 			{
 				toggle = !toggle;

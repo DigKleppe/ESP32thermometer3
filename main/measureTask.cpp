@@ -29,6 +29,7 @@
 #include "settings.h"
 #include "stdev.h"
 
+
 #define ADDCGI
 
 #ifdef ADDCGI
@@ -218,9 +219,8 @@ void IRAM_ATTR measureTask(void *pvParameters)
 		gptimer_set_raw_count(gptimer, 0);
 		gpio_set_direction(RREF_PIN, GPIO_MODE_OUTPUT); // set discharge resistor on
 		if (xQueueReceive(gpio_evt_queue, &gpio_num, RCTIMEOUT))
-		{ // portMAX_DELAY))
-			//		print_timer_counter(timer_counter_value);
-			;
+		{ 
+			;//	print_timer_counter(timer_counter_value);
 		}
 		else
 			printf(" No Ref ");
@@ -296,12 +296,13 @@ void IRAM_ATTR measureTask(void *pvParameters)
 				}
 			}
 			lastTemperature[ntc] = temp;
-		}
+				}
 		else
 		{
 			printf(" No NTC ");
 			gpio_set_direction(NTCpins[ntc],
 							   GPIO_MODE_INPUT); // set discharge NTC off
+
 			lastTemperature[ntc] = ERRORTEMP;
 		}
 		gpio_set_direction(CAP_PIN, GPIO_MODE_OUTPUT); // charge capacitor
@@ -342,7 +343,7 @@ void IRAM_ATTR measureTask(void *pvParameters)
 				if (lastTemperature[n] == ERRORTEMP)
 					snprintf(line, MAXCHARSPERLINE, "-");
 				else
-					snprintf(line, MAXCHARSPERLINE, fmt, displayAverager[n].average() / 1000.0);
+					snprintf(line, MAXCHARSPERLINE, fmt, (displayAverager[n].average() / 1000.0) - userSettings.temperatureOffset[n]);
 				xQueueReceive(displayReadyMssgBox, &displayMssg, 100);
 				xQueueSend(displayMssgBox, &displayMssg, 500 / portTICK_PERIOD_MS);
 				xQueueReceive(displayReadyMssgBox, &displayMssg, 100);
@@ -384,17 +385,21 @@ const CGIurlDesc_t CGIurls[] = {
 	{"/cgi-bin/getInfoValues", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)getInfoValuesScript},
 	{"/cgi-bin/getCalValues", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)buildCalTable},
 	{"/cgi-bin/getSettingsTable", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)buildSettingsTable},
-	{"/cgi-bin/getSensorName", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)getSensorNameScript},
+//	{"/cgi-bin/getSensorName", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)getSensorNameScript},
 	{"/cgi-bin/saveSettings", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)saveSettingsScript},
 	{"/cgi-bin/cancelSettings", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)cancelSettingsScript},
 	{"", NULL, NULL}};
 
-const CGIdesc_t CGIdescriptors[] = {{"measValues", (void *)&measValues, STR, sizeof(measValues) / sizeof(char *)}, {"", NULL, INT, 0}};
-
-const CGIdesc_t settingsDescr[] = {{"MiddelInterval", &userSettings.middleInterval, INT, 1},
-								   {"LogInterval (min)", &userSettings.logInterval, INT, 1},
-								   {"Resolutie", &userSettings.resolution, INT, 1},
-								   {"", NULL, INT, 0}};
+const CGIdesc_t settingsDescr[] = {{"MiddelInterval", &userSettings.middleInterval, INT, 1, 1, 100},
+								   {"LogInterval (min)", &userSettings.logInterval, INT, 1,	1, 60},
+								   {"Resolutie", &userSettings.resolution, INT, 1, 1, 3},
+								   {"Modulenaam", &userSettings.moduleName, STR, 1, 1, MAX_STRLEN},
+								   {"TemperatureOffset1", &userSettings.temperatureOffset[0], FLT, 1, -5, 5}, // todo 
+								   {"TemperatureOffset2", &userSettings.temperatureOffset[1], FLT, 1, -5, 5},
+								   {"TemperatureOffset3", &userSettings.temperatureOffset[2], FLT, 1, -5, 5},
+								   {"TemperatureOffset4", &userSettings.temperatureOffset[3], FLT, 1, -5, 5},
+								   {NULL, NULL, INT, 0,0,0}
+								   };
 
 CGIurlDesc_t *getCGIurlsTable()
 {
@@ -405,23 +410,23 @@ CGIdesc_t *getSettingsDescriptorTable()
 {
 	return (CGIdesc_t *)settingsDescr;
 }
-
-int getSensorNameScript(char *pBuffer, int count)
-{
-	int len = 0;
-	switch (scriptState)
-	{
-	case 0:
-		scriptState++;
-		len += sprintf(pBuffer + len, "Actueel,Nieuw\n");
-		len += sprintf(pBuffer + len, "%s\n", userSettings.moduleName);
-		return len;
-		break;
-	default:
-		break;
-	}
-	return 0;
-}
+// // todo remove this , include with other settings
+// int getSensorNameScript(char *pBuffer, int count)
+// {
+// 	int len = 0;
+// 	switch (scriptState)
+// 	{
+// 	case 0:
+// 		scriptState++;
+// 		len += sprintf(pBuffer + len, "Actueel,Nieuw\n");
+// 		len += sprintf(pBuffer + len, "%s\n", userSettings.moduleName);
+// 		return len;
+// 		break;
+// 	default:
+// 		break;
+// 	}
+// 	return 0;
+// }
 
 int getInfoValuesScript(char *pBuffer, int count)
 {
@@ -475,7 +480,20 @@ int buildSettingsTable(char *pBuffer, int count)
 		for (int n = 0; (settingsDescr[n].nrValues > 0); n++)
 		{ // loop over all settings names
 			len += sprintf(pBuffer + len, "%s,", settingsDescr[n].name);
-			len += sprintf(pBuffer + len, "%d\n", *(int *)(settingsDescr[n].pValue));
+			switch (settingsDescr[n].varType)
+			{
+			case INT:
+				len += sprintf(pBuffer + len, "%d\n", *(int *)(settingsDescr[n].pValue));
+				break;
+			case FLT:
+				len += sprintf(pBuffer + len, "%3.2f\n", *(float *)(settingsDescr[n].pValue));
+				break;	
+			case STR:	
+				len += sprintf(pBuffer + len, "%s\n", (char *)(settingsDescr[n].pValue));
+				break;
+				default:
+				break;
+			}	
 		}
 		return len;
 		break;
@@ -586,40 +604,78 @@ int getNewMeasValuesScript(char *pBuffer, int count)
 	}
 	return len;
 }
-// " setItem:settingsTable"
+// " setItem:calTable:Sensor 1= 22"
 void parseCGIWriteData(char *buf, int received)
 {
-	if (strncmp(buf, "setCal:", 7) == 0)
-	{ //
+	parseCGIsettings (buf, received);
 
-		float ref;
-		sscanf((const char *)buf, "%f", &ref);
+	// std::string foo = buf;
+	// std::vector<std::string> results;
+	// split(foo, ":", results)
+	// if ( strcmp(results[0].c_str(), "setItem") == 0)
+	// {
+	// 	float ref;
+	// 	sscanf((const char *)buf, "%f", &ref);
 
-		for (int n = 0; n < NR_NTCS; n++)
-		{
-			if (lastTemperature[n] != ERRORTEMP)
-			{
-				float t = logAverager[n].average() / 1000.0;
-				userSettings.temperatureOffset[n] = t - ref;
-			}
-		}
-	}
-	else
-	{
-		if (strncmp(buf, "setName:", 8) == 0)
-		{
-			if (readActionScript(&buf[8], writeVarDescriptors, NR_CALDESCRIPTORS))
-			{
-				if (strcmp(tempName, userSettings.moduleName) != 0)
-				{
-					strcpy(userSettings.moduleName, tempName);
-					ESP_ERROR_CHECK(mdns_hostname_set(userSettings.moduleName));
-					ESP_LOGI(TAG, "Hostname set to %s", userSettings.moduleName);
-					saveSettings();
-				}
-			}
-		}
-	}
+	// 	for (int n = 0; n < NR_NTCS; n++)
+	// 	{
+	// 		if (lastTemperature[n] != ERRORTEMP)
+	// 		{
+	// 			float t = logAverager[n].average() / 1000.0;
+	// 			userSettings.temperatureOffset[n] = t - ref;
+	// 		}
+	// 	}
+	// }
+	// else
+	// {
+	// 	if (strcmp(results[0].c_str(), "setName") == 0)
+	// 	{
+	// 		if (readActionScript(&results[1], writeVarDescriptors, NR_CALDESCRIPTORS))
+	// 		{
+	// 			if (strcmp(tempName, userSettings.moduleName) != 0)
+	// 			{
+	// 				strcpy(userSettings.moduleName, tempName);
+	// 				ESP_ERROR_CHECK(mdns_hostname_set(userSettings.moduleName));
+	// 				ESP_LOGI(TAG, "Hostname set to %s", userSettings.moduleName);
+	// 				saveSettings();
+	// 			}
+	// 		}
+	// 	}
+	// }
+	
+	
+	
+	// if (strncmp(buf, "setItem:", strlen( "setItem:")) == 0)
+	// { //
+
+	// 	float ref;
+	// 	sscanf((const char *)buf, "%f", &ref);
+
+	// 	for (int n = 0; n < NR_NTCS; n++)
+	// 	{
+	// 		if (lastTemperature[n] != ERRORTEMP)
+	// 		{
+	// 			float t = logAverager[n].average() / 1000.0;
+	// 			userSettings.temperatureOffset[n] = t - ref;
+	// 		}
+	// 	}
+	// }
+	// else
+	// {
+	// 	if (strncmp(buf, "setName:", 8) == 0)
+	// 	{
+	// 		if (readActionScript(&buf[8], writeVarDescriptors, NR_CALDESCRIPTORS))
+	// 		{
+	// 			if (strcmp(tempName, userSettings.moduleName) != 0)
+	// 			{
+	// 				strcpy(userSettings.moduleName, tempName);
+	// 				ESP_ERROR_CHECK(mdns_hostname_set(userSettings.moduleName));
+	// 				ESP_LOGI(TAG, "Hostname set to %s", userSettings.moduleName);
+	// 				saveSettings();
+	// 			}
+	// 		}
+	// 	}
+	// }
 }
 
 #endif
