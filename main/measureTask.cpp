@@ -29,7 +29,6 @@
 #include "settings.h"
 #include "stdev.h"
 
-
 #define ADDCGI
 
 #ifdef ADDCGI
@@ -219,8 +218,8 @@ void IRAM_ATTR measureTask(void *pvParameters)
 		gptimer_set_raw_count(gptimer, 0);
 		gpio_set_direction(RREF_PIN, GPIO_MODE_OUTPUT); // set discharge resistor on
 		if (xQueueReceive(gpio_evt_queue, &gpio_num, RCTIMEOUT))
-		{ 
-			;//	print_timer_counter(timer_counter_value);
+		{
+			; //	print_timer_counter(timer_counter_value);
 		}
 		else
 			printf(" No Ref ");
@@ -296,7 +295,7 @@ void IRAM_ATTR measureTask(void *pvParameters)
 				}
 			}
 			lastTemperature[ntc] = temp;
-				}
+		}
 		else
 		{
 			printf(" No NTC ");
@@ -327,7 +326,7 @@ void IRAM_ATTR measureTask(void *pvParameters)
 					if (oldLogInterval != userSettings.logInterval)
 					{
 						oldLogInterval = userSettings.logInterval;
-						saveSettings();	
+						saveSettings();
 					}
 					logPrescaler = userSettings.logInterval;
 				}
@@ -355,7 +354,7 @@ void IRAM_ATTR measureTask(void *pvParameters)
 				oldDisplayAverages = userSettings.middleInterval;
 				for (int n = 0; n < NR_NTCS; n++)
 					displayAverager[n].setAverages(userSettings.middleInterval);
-				saveSettings();	
+				saveSettings();
 			}
 		}
 		//	vTaskDelayUntil(&xLastWakeTime, MEASINTERVAL * 1000 /
@@ -377,7 +376,6 @@ int getAllLogsScript(char *pBuffer, int count);
 int getNewLogsScript(char *pBuffer, int count);
 int clearLogScript(char *pBuffer, int count);
 
-
 bool readActionScript(char *pcParam, const CGIdesc_t *CGIdescTable, int size);
 char *readCGIvalues(int iIndex, char *pcParam);
 
@@ -385,9 +383,9 @@ const CGIurlDesc_t CGIurls[] = {
 	{"/cgi-bin/readvar", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)readVarScript},	// !!!!!! leave this index  !!
 	{"/cgi-bin/writevar", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)readVarScript},	// !!!!!! leave this index  !!
 	{"/action_page.php", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)actionRespScript}, // !!!!!! leave this index  !!
-	{ "/cgi-bin/getAllLogs", (tCGIHandler_t) readCGIvalues, (CGIresponseFileHandler_t) getAllLogsScript},
-	{ "/cgi-bin/getNewLogs", (tCGIHandler_t) readCGIvalues, (CGIresponseFileHandler_t) getNewLogsScript},
-	{ "/cgi-bin/clearLog", (tCGIHandler_t) readCGIvalues, (CGIresponseFileHandler_t) clearLogScript},
+	{"/cgi-bin/getAllLogs", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)getAllLogsScript},
+	{"/cgi-bin/getNewLogs", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)getNewLogsScript},
+	{"/cgi-bin/clearLog", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)clearLogScript},
 	{"/cgi-bin/getInfoValues", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)getInfoValuesScript},
 	{"/cgi-bin/getCalValues", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)buildCalTable},
 	{"/cgi-bin/getSettingsTable", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)buildSettingsTable},
@@ -397,15 +395,14 @@ const CGIurlDesc_t CGIurls[] = {
 	{"", NULL, NULL}};
 
 const CGIdesc_t settingsDescr[] = {{"MiddelInterval", &userSettings.middleInterval, INT, 1, 1, 100},
-								   {"LogInterval (min)", &userSettings.logInterval, INT, 1,	1, 60},
+								   {"LogInterval (min)", &userSettings.logInterval, INT, 1, 1, 60},
 								   {"Resolutie", &userSettings.resolution, INT, 1, 1, 3},
 								   {"Modulenaam", &userSettings.moduleName, STR, 1, 1, MAX_STRLEN},
-								   {"TemperatureOffset1", &userSettings.temperatureOffset[0], FLT, 1, -5, 5}, // todo 
+								   {"TemperatureOffset1", &userSettings.temperatureOffset[0], FLT, 1, -5, 5}, // todo
 								   {"TemperatureOffset2", &userSettings.temperatureOffset[1], FLT, 1, -5, 5},
 								   {"TemperatureOffset3", &userSettings.temperatureOffset[2], FLT, 1, -5, 5},
 								   {"TemperatureOffset4", &userSettings.temperatureOffset[3], FLT, 1, -5, 5},
-								   {NULL, NULL, INT, 0,0,0}
-								   };
+								   {NULL, NULL, INT, 0, 0, 0}};
 
 CGIurlDesc_t *getCGIurlsTable()
 {
@@ -417,11 +414,13 @@ CGIdesc_t *getSettingsDescriptorTable()
 	return (CGIdesc_t *)settingsDescr;
 }
 
-int printLog(log_t * logToPrint, char *pBuffer) {
+int printLog(log_t *logToPrint, char *pBuffer)
+{
 	int len;
-	len = sprintf(pBuffer, "%d,", (int) logToPrint->timeStamp);
-	for (int n = 0; n < NR_NTCS; n++) {
-		len += sprintf(pBuffer + len, "%3.2f,", logToPrint->temperature[n]-userSettings.temperatureOffset[n]);
+	len = sprintf(pBuffer, "%d,", (int)logToPrint->timeStamp);
+	for (int n = 0; n < NR_NTCS; n++)
+	{
+		len += sprintf(pBuffer + len, "%3.2f,", logToPrint->temperature[n] - userSettings.temperatureOffset[n]);
 	}
 	len += sprintf(pBuffer + len, "\n");
 	return len;
@@ -434,7 +433,7 @@ int printLog(log_t * logToPrint, char *pBuffer) {
 // 	switch (scriptState)
 // 	{
 // 	case 0:
-// 		scriptState++;
+// 		scriptState++;lastTemperature
 // 		len += sprintf(pBuffer + len, "Actueel,Nieuw\n");
 // 		len += sprintf(pBuffer + len, "%s\n", userSettings.moduleName);
 // 		return len;
@@ -504,13 +503,13 @@ int buildSettingsTable(char *pBuffer, int count)
 				break;
 			case FLT:
 				len += sprintf(pBuffer + len, "%3.2f\n", *(float *)(settingsDescr[n].pValue));
-				break;	
-			case STR:	
+				break;
+			case STR:
 				len += sprintf(pBuffer + len, "%s\n", (char *)(settingsDescr[n].pValue));
 				break;
-				default:
+			default:
 				break;
-			}	
+			}
 		}
 		return len;
 		break;
@@ -550,10 +549,13 @@ int getRTMeasValuesScript(char *pBuffer, int count)
 	case 0:
 		scriptState++;
 
+		char fmt[6];
+		snprintf(fmt, 6, "%%2.%df", userSettings.resolution);
+
 		len = sprintf(pBuffer + len, "%u,", (unsigned int)timeStamp++);
 		for (int n = 0; n < NR_NTCS; n++)
 		{
-			len += sprintf(pBuffer + len, "%3.2f,", lastTemperature[n] - userSettings.temperatureOffset[n]);
+			len += sprintf(pBuffer + len, fmt, (displayAverager[n].average() / 1000.0) - userSettings.temperatureOffset[n]);
 		}
 		len += sprintf(pBuffer + len, "\n");
 		return len;
@@ -564,78 +566,9 @@ int getRTMeasValuesScript(char *pBuffer, int count)
 	return 0;
 }
 
-
 void parseCGIWriteData(char *buf, int received)
 {
-	parseCGIsettings (buf, received);
-
-	// std::string foo = buf;
-	// std::vector<std::string> results;
-	// split(foo, ":", results)
-	// if ( strcmp(results[0].c_str(), "setItem") == 0)
-	// {
-	// 	float ref;
-	// 	sscanf((const char *)buf, "%f", &ref);
-
-	// 	for (int n = 0; n < NR_NTCS; n++)
-	// 	{
-	// 		if (lastTemperature[n] != ERRORTEMP)
-	// 		{
-	// 			float t = logAverager[n].average() / 1000.0;
-	// 			userSettings.temperatureOffset[n] = t - ref;
-	// 		}
-	// 	}
-	// }
-	// else
-	// {
-	// 	if (strcmp(results[0].c_str(), "setName") == 0)
-	// 	{
-	// 		if (readActionScript(&results[1], writeVarDescriptors, NR_CALDESCRIPTORS))
-	// 		{
-	// 			if (strcmp(tempName, userSettings.moduleName) != 0)
-	// 			{
-	// 				strcpy(userSettings.moduleName, tempName);
-	// 				ESP_ERROR_CHECK(mdns_hostname_set(userSettings.moduleName));
-	// 				ESP_LOGI(TAG, "Hostname set to %s", userSettings.moduleName);
-	// 				saveSettings();
-	// 			}
-	// 		}
-	// 	}
-	// }
-	
-	
-	
-	// if (strncmp(buf, "setItem:", strlen( "setItem:")) == 0)
-	// { //
-
-	// 	float ref;
-	// 	sscanf((const char *)buf, "%f", &ref);
-
-	// 	for (int n = 0; n < NR_NTCS; n++)
-	// 	{
-	// 		if (lastTemperature[n] != ERRORTEMP)
-	// 		{
-	// 			float t = logAverager[n].average() / 1000.0;
-	// 			userSettings.temperatureOffset[n] = t - ref;
-	// 		}
-	// 	}
-	// }
-	// else
-	// {
-	// 	if (strncmp(buf, "setName:", 8) == 0)
-	// 	{
-	// 		if (readActionScript(&buf[8], writeVarDescriptors, NR_CALDESCRIPTORS))
-	// 		{
-	// 			if (strcmp(tempName, userSettings.moduleName) != 0)
-	// 			{
-	// 				strcpy(userSettings.moduleName, tempName);
-	// 				ESP_ERROR_CHECK(mdns_hostname_set(userSettings.moduleName));
-	// 				ESP_LOGI(TAG, "Hostname set to %s", userSettings.moduleName);
-	// 				saveSettings();
-	// 			}
-	// 		}
-	// 	}
-	// }
+	parseCGIsettings(buf, received);
 }
 
 #endif

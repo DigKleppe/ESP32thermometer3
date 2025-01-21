@@ -63,25 +63,7 @@ function clear() {
 }
 
 //var formatter_time= new google.visualization.DateFormat({formatType: 'long'});
-// channel 1 .. 5
 
-
-function plot(channel, value, timeStamp) {
-	if (chartRdy) {
-		if (channel == 0) {
-			chartData.addRow();
-			if (chartData.getNumberOfRows() > MAXPOINTS == true)
-				chartData.removeRows(0, chartData.getNumberOfRows() - MAXPOINTS);
-			var date = new Date(timeStamp);
-			var labelText = date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds();
-			chartData.setValue(chartData.getNumberOfRows() - 1, 0, labelText);
-		}
-		else {
-			value = parseFloat(value); // from string to float
-			chartData.setValue(chartData.getNumberOfRows() - 1, channel, value);
-		}
-	}
-}
 
 function loadCBs() {
 	var cbstate;
@@ -202,6 +184,26 @@ function simplot() {
 	}
 }
 
+// channel 1 .. 4
+
+function plot(channel, value, timeStamp) {
+	if (chartRdy) {
+		if (channel == 0) {
+			chartData.addRow();
+			if (chartData.getNumberOfRows() > MAXPOINTS == true)
+				chartData.removeRows(0, chartData.getNumberOfRows() - MAXPOINTS);
+			var date = new Date(timeStamp);
+			var labelText = date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds();
+			chartData.setValue(chartData.getNumberOfRows() - 1, 0, labelText);
+		}
+		else {
+			value = parseFloat(value); // from string to float
+			chartData.setValue(chartData.getNumberOfRows() - 1, channel, value);
+		}
+	}
+}
+
+
 function plotArray(str) {
 	var arr;
 	var arr2 = str.split("\n");
@@ -216,11 +218,11 @@ function plotArray(str) {
 		var sec = Date.now();//  / 1000;  // mseconds since 1-1-1970 
 
 		timeOffset = sec - parseFloat(measTimeLastSample) * 10;
-
+	
 		for (var p = 0; p < nrPoints; p++) {
 			arr = arr2[p].split(",");
 			if (arr.length >= 5) {
-				sampleTime = sec - parseFloat(arr[0]) * 10 + timeOffset; //arr[0] is time in 10 ms units since start of program
+				sampleTime = (parseFloat(arr[0]) * 10) + timeOffset; //arr[0] is time in 10 ms units since start of program
 				plot(0, arr[1], sampleTime);  // new point
 
 				for (var m = 1; m < NRItems; m++) {
