@@ -549,8 +549,8 @@ int getRTMeasValuesScript(char *pBuffer, int count)
 	case 0:
 		scriptState++;
 
-		char fmt[6];
-		snprintf(fmt, 6, "%%2.%df", userSettings.resolution);
+		char fmt[7];
+		snprintf(fmt, 7, "%%2.%df,", userSettings.resolution);
 
 		len = sprintf(pBuffer + len, "%u,", (unsigned int)timeStamp++);
 		for (int n = 0; n < NR_NTCS; n++)
