@@ -1,4 +1,4 @@
-var SIMULATE = false;
+var SIMULATE = true;
 
 function sendItem(item) {
 	console.log("sendItem: " + item);
@@ -72,3 +72,4 @@ function clearRemoteLog() {
 		}
 	}
 }
+

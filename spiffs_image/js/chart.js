@@ -218,7 +218,7 @@ function plotArray(str) {
 		var sec = Date.now();//  / 1000;  // mseconds since 1-1-1970 
 
 		timeOffset = sec - parseFloat(measTimeLastSample) * 10;
-	
+
 		for (var p = 0; p < nrPoints; p++) {
 			arr = arr2[p].split(",");
 			if (arr.length >= 5) {
@@ -267,7 +267,6 @@ function timer() {
 	}
 }
 
-
 function startStop() {
 	halt = !halt;
 	if (halt)
@@ -286,6 +285,43 @@ function clearChart() {
 	chartData.removeRows(0, chartData.getNumberOfRows());
 	chart.draw(chartData, options);
 }
+
+function exportChart() {
+
+	var ms = Date.now();
+	var date = new Date(ms);
+	var fName =  "temperaturen.csv";
+
+	var csv = google.visualization.dataTableToCsv(chartData);
+
+	// for UTF-16
+	var cCode, bArr = [];
+	bArr.push(255, 254);
+	for (var i = 0; i < csv.length; ++i) {
+		cCode = csv.charCodeAt(i);
+		bArr.push(cCode & 0xff);
+		bArr.push(cCode / 256 >>> 0);
+	}
+
+	var blob = new Blob([new Uint8Array(bArr)], { type: 'text/csv;charset=UTF-16LE;' });
+	if (navigator.msSaveBlob) {
+		navigator.msSaveBlob(blob, fName);
+	} else {
+		var link = document.createElement("a");
+		if (link.download !== undefined) {
+			var url = window.URL.createObjectURL(blob);
+			link.setAttribute("href", url);
+			link.setAttribute("download", fName);
+			link.style.visibility = 'hidden';
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			window.URL.revokeObjectURL(url);
+		}
+	}
+	alert( "Bestand opgeslagen in map download\n\r" + fName);
+}
+
 
 
 
