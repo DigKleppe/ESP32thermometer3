@@ -80,7 +80,7 @@ extern "C"
 		xTimerStart(xTimer, 0);
 
 		xTaskCreate(&guiTask, "guiTask", 1024 * 8, NULL, 0, NULL);
-		xTaskCreate(&measureTask, "measureTask", 3500, NULL, 2, NULL);
+		xTaskCreatePinnedToCore(&measureTask, "measureTask", 3500, NULL, 2, NULL,1);
 		wifiConnect();
 
 		displayMssg.line = 5;

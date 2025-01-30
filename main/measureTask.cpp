@@ -8,9 +8,9 @@
 #include <cstdio>
 #include <ctime>
 #include <string.h>
-
 #include <math.h>
 #include <sys/_timeval.h>
+#include "soc/interrupts.h"
 
 #include "driver/gpio.h"
 #include "driver/gptimer.h"
@@ -75,20 +75,24 @@ gptimer_handle_t gptimer = NULL;
 
 float stdevBuffer[NRSTDEVVALUES];
 int nrStdValues;
+uint32_t irqflag;
+uint32_t IntCounter[2]; // TEST ONLY
 
 float tmpTemperature;
-//  called when capacitor is discharged
-static void IRAM_ATTR gpio_isr_handler(void *arg)
-{
-	//	gptimer_stop( gptimer);
-	gptimer_get_raw_count(gptimer, &timer_counter_value);
-	xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
-	irqcntr++;
-	//	gpio_set_intr_type(CAP_PIN, GPIO_INTR_DISABLE);  // disable to prevent a
-	// lot of irqs
-	gpio_set_intr_type(COMPARATOR_PIN,
-					   GPIO_INTR_DISABLE); // disable to prevent a lot of irqs
-}
+// //  called when capacitor is discharged
+// replaced by high prio irq assembly code
+
+// static void IRAM_ATTR gpio_isr_handler(void *arg)
+// {
+// 	//	gptimer_stop( gptimer);
+// 	gptimer_get_raw_count(gptimer, &timer_counter_value);
+// 	xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
+// 	irqcntr++;
+// 	//	gpio_set_intr_type(CAP_PIN, GPIO_INTR_DISABLE);  // disable to prevent a
+// 	// lot of irqs
+// 	gpio_set_intr_type(COMPARATOR_PIN,
+// 					   GPIO_INTR_DISABLE); // disable to prevent a lot of irqs
+// }
 
 /*
  * A simple helper function to print the raw timer counter value
@@ -114,6 +118,53 @@ static void timerInit()
 	ESP_ERROR_CHECK(gptimer_start(gptimer));
 }
 
+void RegisterInt(void *you_need_this)
+{
+	intr_handle_t handle;
+	esp_err_t err;
+
+	gpio_config_t interrupt_pin = {
+		// .intr_type=GPIO_INTR_LOW_LEVEL,
+		.intr_type = GPIO_INTR_NEGEDGE,	  .pin_bit_mask = (1ULL << COMPARATOR_PIN), .mode = GPIO_MODE_INPUT,
+		.pull_up_en = GPIO_PULLUP_ENABLE, .pull_down_en = GPIO_PULLDOWN_DISABLE,
+	};
+	ESP_ERROR_CHECK(gpio_config(&interrupt_pin));
+	ESP_INTR_DISABLE(31);
+	// intr_matrix_set(1, ETS_GPIO_INTR_SOURCE, 31);
+
+	err = esp_intr_alloc(ETS_GPIO_INTR_SOURCE, ESP_INTR_FLAG_IRAM | ESP_INTR_FLAG_LEVEL5, NULL, NULL, &handle);
+	if (err != ESP_OK)
+	{
+		printf("Failure: could not install ISR, %d(0x%x)\n", err, err);
+		while (1)
+			vTaskDelay(500 / portTICK_PERIOD_MS);
+		return;
+	}
+
+	ESP_INTR_ENABLE(31);
+	while (1)
+		vTaskDelay(500 / portTICK_PERIOD_MS);
+}
+
+// waits for comaparator irq
+// returns true if irq was received, false if timeout
+bool waitForIRQ()
+{
+	int timeOut = 0;
+	irqflag = 0;
+	while (irqflag == 0)
+	{
+		vTaskDelay(1);
+		timeOut++;
+		if (timeOut > RCTIMEOUT)
+		{
+			printf(" No Ref ");
+			break;
+		}
+	}
+	return irqflag > 0;
+}
+
 void IRAM_ATTR measureTask(void *pvParameters)
 {
 	TickType_t xLastWakeTime;
@@ -131,9 +182,11 @@ void IRAM_ATTR measureTask(void *pvParameters)
 	gpio_num_t NTCpin;
 	int oldDisplayAverages;
 	int oldLogInterval;
+	int timeOut = 0;
 
+	xTaskCreatePinnedToCore(RegisterInt, "allocEXTGPIOINT", 4096, NULL, 0, NULL, 1);
 	// while(1)
-	// 	vTaskDelay(100);
+	vTaskDelay(10);
 
 #ifdef SIMULATE
 	float x = 0;
@@ -166,7 +219,7 @@ void IRAM_ATTR measureTask(void *pvParameters)
 	xLastWakeTime = xTaskGetTickCount();
 
 	timerInit();
-	gpio_evt_queue = xQueueCreate(1, sizeof(uint32_t));
+	//	gpio_evt_queue = xQueueCreate(1, sizeof(uint32_t));
 
 	esp_rom_gpio_pad_select_gpio(CAP_PIN);
 	esp_rom_gpio_pad_select_gpio(RREF_PIN);
@@ -176,9 +229,8 @@ void IRAM_ATTR measureTask(void *pvParameters)
 	esp_rom_gpio_pad_select_gpio(RREF_PIN);
 	gpio_set_drive_capability(RREF_PIN, GPIO_DRIVE_CAP_3);
 
-	gpio_install_isr_service(1 << 3);
-	//	gpio_isr_handler_add(CAP_PIN, gpio_isr_handler, (void*) CAP_PIN);
-	gpio_isr_handler_add(COMPARATOR_PIN, gpio_isr_handler, (void *)CAP_PIN);
+	// gpio_install_isr_service(1 << 3);
+	// gpio_isr_handler_add(COMPARATOR_PIN, gpio_isr_handler, (void *)CAP_PIN);
 
 	gpio_set_level(CAP_PIN, 1);
 
@@ -210,19 +262,16 @@ void IRAM_ATTR measureTask(void *pvParameters)
 		gpio_set_direction(CAP_PIN, GPIO_MODE_OUTPUT); // charge capacitor
 		vTaskDelay(CHARGETIME);
 
-		xQueueReceive(gpio_evt_queue, &gpio_num, 0);  // empty queue
+		//		xQueueReceive(gpio_evt_queue, &gpio_num, 0);  // empty queue
 		gpio_set_direction(CAP_PIN, GPIO_MODE_INPUT); // charge capacitor off
 		//	gpio_set_intr_type(CAP_PIN, GPIO_INTR_NEGEDGE); // irq on again
 		gpio_set_intr_type(COMPARATOR_PIN, GPIO_INTR_NEGEDGE); // irq on again
 
 		gptimer_set_raw_count(gptimer, 0);
 		gpio_set_direction(RREF_PIN, GPIO_MODE_OUTPUT); // set discharge resistor on
-		if (xQueueReceive(gpio_evt_queue, &gpio_num, RCTIMEOUT))
-		{
-			; //	print_timer_counter(timer_counter_value);
-		}
-		else
-			printf(" No Ref ");
+
+		waitForIRQ();
+
 		gpio_set_direction(RREF_PIN, GPIO_MODE_INPUT); // ref off
 		//	refAverager.write(timer_counter_value - OFFSET);
 		//	refTimerValue = refAverager.average();
@@ -234,15 +283,16 @@ void IRAM_ATTR measureTask(void *pvParameters)
 
 		NTCpin = NTCpins[ntc];
 
-		xQueueReceive(gpio_evt_queue, &gpio_num, 0);  // empty queue
+		//	xQueueReceive(gpio_evt_queue, &gpio_num, 0);  // empty queue
 		gpio_set_direction(CAP_PIN, GPIO_MODE_INPUT); // charge capacitor off
 		//	gpio_set_intr_type(CAP_PIN, GPIO_INTR_NEGEDGE); // irq on again
-		gpio_set_intr_type(COMPARATOR_PIN, GPIO_INTR_NEGEDGE); // irq on again
+		//		gpio_set_intr_type(COMPARATOR_PIN, GPIO_INTR_NEGEDGE); // irq on again
 
 		gptimer_set_raw_count(gptimer, 0);
 		gpio_set_direction(NTCpin, GPIO_MODE_OUTPUT); // set discharge NTC on
 
-		if (xQueueReceive(gpio_evt_queue, &gpio_num, RCTIMEOUT))
+		//	if (xQueueReceive(gpio_evt_queue, &gpio_num, RCTIMEOUT))
+		if (waitForIRQ())
 		{
 			gpio_set_direction(NTCpin, GPIO_MODE_INPUT); // set discharge NTC off
 			//	int r = (int) ( RREF * ntcAverager[ntc].average()) / (float)
