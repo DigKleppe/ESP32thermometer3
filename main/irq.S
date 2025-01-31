@@ -2,10 +2,10 @@
 #include <xtensa/corebits.h>
 #include <xtensa/config/system.h>
 #include "soc/gpio_reg.h"
-#include "measureTask.h"
 
+#define    COMPARATOR_PIN_MSK   ( 1 << 1 )  // gpio 1 (COMPARATOR_PIN)
 
-#define Pin_Mask            (1<<COMPARATOR_PIN)
+#define Pin_Mask            COMPARATOR_PIN_MSK 
 #define PPS_INT_Sta_REG     GPIO_STATUS_REG         //where you can read the interrupt status 
 #define Pin_INT_W1TC_REG    GPIO_STATUS_W1TC_REG    //where you can write the mask to to clear the interrupt status.
 
@@ -31,7 +31,7 @@ xt_highint5:
     s32i    a12,    a0,     8   
     s32i    a13,    a0,     12  
     s32i    a14,    a0,     16  
-    s32i    a15,    a0,     4  
+    s32i    a15,    a0,     20  
 
 //////////////////////////////////////////////////////////////////
 

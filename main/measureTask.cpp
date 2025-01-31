@@ -5,20 +5,21 @@
  * Author: dig
  */
 
-#include <cstdio>
-#include <ctime>
-#include <string.h>
-#include <math.h>
-#include <sys/_timeval.h>
-#include "soc/interrupts.h"
-
-#include "driver/gpio.h"
-#include "driver/gptimer.h"
-#include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
+
+#include "soc/interrupts.h"
+#include <cstdio>
+#include <ctime>
+#include <math.h>
+#include <string.h>
+#include <sys/_timeval.h>
+
+#include "driver/gpio.h"
+#include "driver/gptimer.h"
+#include "esp_log.h"
 
 #include "averager.h"
 #include "guiTask.h"
@@ -75,7 +76,7 @@ gptimer_handle_t gptimer = NULL;
 
 float stdevBuffer[NRSTDEVVALUES];
 int nrStdValues;
-uint32_t irqflag;
+uint32_t irqFlg;
 uint32_t IntCounter[2]; // TEST ONLY
 
 float tmpTemperature;
@@ -124,9 +125,13 @@ void RegisterInt(void *you_need_this)
 	esp_err_t err;
 
 	gpio_config_t interrupt_pin = {
+		.pin_bit_mask = (1ULL << COMPARATOR_PIN),
+		.mode = GPIO_MODE_INPUT,
+		.pull_up_en = GPIO_PULLUP_ENABLE,
+		.pull_down_en = GPIO_PULLDOWN_DISABLE,
 		// .intr_type=GPIO_INTR_LOW_LEVEL,
-		.intr_type = GPIO_INTR_NEGEDGE,	  .pin_bit_mask = (1ULL << COMPARATOR_PIN), .mode = GPIO_MODE_INPUT,
-		.pull_up_en = GPIO_PULLUP_ENABLE, .pull_down_en = GPIO_PULLDOWN_DISABLE,
+		.intr_type = GPIO_INTR_NEGEDGE,
+
 	};
 	ESP_ERROR_CHECK(gpio_config(&interrupt_pin));
 	ESP_INTR_DISABLE(31);
@@ -151,18 +156,18 @@ void RegisterInt(void *you_need_this)
 bool waitForIRQ()
 {
 	int timeOut = 0;
-	irqflag = 0;
-	while (irqflag == 0)
+	irqFlg = 0;
+	while (irqFlg == 0)
 	{
 		vTaskDelay(1);
 		timeOut++;
 		if (timeOut > RCTIMEOUT)
 		{
-			printf(" No Ref ");
+		//	printf(" No Ref ");
 			break;
 		}
 	}
-	return irqflag > 0;
+	return irqFlg > 0;
 }
 
 void IRAM_ATTR measureTask(void *pvParameters)
@@ -266,9 +271,10 @@ void IRAM_ATTR measureTask(void *pvParameters)
 		gpio_set_direction(CAP_PIN, GPIO_MODE_INPUT); // charge capacitor off
 		//	gpio_set_intr_type(CAP_PIN, GPIO_INTR_NEGEDGE); // irq on again
 		gpio_set_intr_type(COMPARATOR_PIN, GPIO_INTR_NEGEDGE); // irq on again
-
+		portDISABLE_INTERRUPTS();
 		gptimer_set_raw_count(gptimer, 0);
 		gpio_set_direction(RREF_PIN, GPIO_MODE_OUTPUT); // set discharge resistor on
+		portENABLE_INTERRUPTS();
 
 		waitForIRQ();
 
@@ -287,9 +293,10 @@ void IRAM_ATTR measureTask(void *pvParameters)
 		gpio_set_direction(CAP_PIN, GPIO_MODE_INPUT); // charge capacitor off
 		//	gpio_set_intr_type(CAP_PIN, GPIO_INTR_NEGEDGE); // irq on again
 		//		gpio_set_intr_type(COMPARATOR_PIN, GPIO_INTR_NEGEDGE); // irq on again
-
+		portDISABLE_INTERRUPTS();
 		gptimer_set_raw_count(gptimer, 0);
 		gpio_set_direction(NTCpin, GPIO_MODE_OUTPUT); // set discharge NTC on
+		portENABLE_INTERRUPTS();
 
 		//	if (xQueueReceive(gpio_evt_queue, &gpio_num, RCTIMEOUT))
 		if (waitForIRQ())
@@ -299,7 +306,7 @@ void IRAM_ATTR measureTask(void *pvParameters)
 			// refTimerValue; // averaged
 			uint64_t r = (uint64_t)(RREF * (timer_counter_value - OFFSET)) / (float)refTimerValue; // real time
 			//	printf("%d: %d *%4d\t",ntc, refTimerValue, r);
-			printf("%d: %4d\t", ntc, (int)r);
+			printf("%d: %5d ", ntc, (int)r);
 			//  printf("\t%d: r:%d %lld *%4lld ", ntc, r, refTimerValue,
 			//         timer_counter_value - OFFSET);
 
@@ -397,8 +404,6 @@ void IRAM_ATTR measureTask(void *pvParameters)
 				xQueueSend(displayMssgBox, &displayMssg, 500 / portTICK_PERIOD_MS);
 				xQueueReceive(displayReadyMssgBox, &displayMssg, 100);
 			}
-			// vTaskDelayUntil(&xLastWakeTime, MEASINTERVAL * 1000 /
-			// portTICK_PERIOD_MS);
 			if (oldDisplayAverages != userSettings.middleInterval)
 			{
 				oldDisplayAverages = userSettings.middleInterval;
@@ -407,8 +412,6 @@ void IRAM_ATTR measureTask(void *pvParameters)
 				saveSettings();
 			}
 		}
-		//	vTaskDelayUntil(&xLastWakeTime, MEASINTERVAL * 1000 /
-		// portTICK_PERIOD_MS);
 	}
 #endif
 }
