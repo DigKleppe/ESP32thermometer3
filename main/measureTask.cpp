@@ -179,18 +179,18 @@ void startChannel(gpio_num_t gpionum)
 {
 	uint32_t *p = (uint32_t *)TIMR_ADDR_CFG;
 	uint32_t val = *p;
-	val &=  0x7FFFFFFF; //	clear bit 31 stop timer 0 
+	val &= 0x7FFFFFFF; //	clear bit 31 stop timer 0
 	*p = val;
 	val |= (1 << 31); // set enablet
 
-//	gptimer_stop(gptimer);
+	//	gptimer_stop(gptimer);
 	gptimer_set_raw_count(gptimer, 0);
 	irqFlg = 0;
 
 	portDISABLE_INTERRUPTS();
 	gpio_output_enable(gpionum); // swith discharge resitor on
-//	gptimer_start( gptimer);
-	*p = val;  // enable timer 0
+								 //	gptimer_start( gptimer);
+	*p = val;					 // enable timer 0
 	portENABLE_INTERRUPTS();
 }
 
@@ -256,11 +256,24 @@ void IRAM_ATTR measureTask(void *pvParameters)
 	//		vTaskDelay(10);
 	//	}
 
+	for (int n = 0; n < 5; n++) // measure initial value of reference resistor
+	{
+		gpio_set_direction(CAP_PIN, GPIO_MODE_OUTPUT); // charge capacitor
+		vTaskDelay(CHARGETIME);
+
+		gpio_set_direction(CAP_PIN, GPIO_MODE_INPUT); // charge capacitor off
+
+		startChannel(RREF_PIN);
+		waitForIRQ();
+		gpio_set_direction(RREF_PIN, GPIO_MODE_INPUT); // ref off
+		refAverager.write(timer_counter_value - OFFSET);
+	}
+
 	while (1)
 	{
 		counts++;
 
-		// measure reference resistor
+		// measure reference resistor once every cycle
 		gpio_set_direction(CAP_PIN, GPIO_MODE_OUTPUT); // charge capacitor
 		vTaskDelay(CHARGETIME);
 
@@ -271,139 +284,145 @@ void IRAM_ATTR measureTask(void *pvParameters)
 		waitForIRQ();
 
 		gpio_set_direction(RREF_PIN, GPIO_MODE_INPUT); // ref off
-		//	refAverager.write(timer_counter_value - OFFSET);
-		//	refTimerValue = refAverager.average();
-		refTimerValue = timer_counter_value - OFFSET;
 
-		// measure NTC
-		gpio_set_direction(CAP_PIN, GPIO_MODE_OUTPUT); // charge capacitor
-		vTaskDelay(CHARGETIME);
+		refAverager.write(timer_counter_value - OFFSET);
+		refTimerValue = refAverager.average();
 
-		NTCpin = NTCpins[ntc];
 
-		gpio_set_direction(CAP_PIN, GPIO_MODE_INPUT); // charge capacitor off
-
-		startChannel(NTCpin);
-
-		//	if (xQueueReceive(gpio_evt_queue, &gpio_num, RCTIMEOUT))
-		if (waitForIRQ())
+		for (ntc = 0; ntc < NR_NTCS; ntc++)
 		{
-			gpio_set_direction(NTCpin, GPIO_MODE_INPUT); // set discharge NTC off
-			//	int r = (int) ( RREF * ntcAverager[ntc].average()) / (float)
-			// refTimerValue; // averaged
-			timer_counter_value -= OFFSET;
-			uint32_t r = (RREF * (timer_counter_value)) / (float)refTimerValue; // real time
-		
-			printf("%d: %4d %4d %3d *%4d ",ntc+1, (int) refTimerValue, (int) timer_counter_value, ( int) (refTimerValue-timer_counter_value), (int) r);
-		
-		//	printf("%d: %5d ", ntc, (int)r);
-
-			//  printf("\t%d: r:%d %lld *%4lld ", ntc+1, r, refTimerValue,
-			//         timer_counter_value - OFFSET);
-
-			r -= RSERIES; //
-			float temp = calcTemp(r);
-			bool skip = false;
-			if (temp > lastTemperature[ntc])
+			if (ntc == 0)
 			{
-				if ((temp - lastTemperature[ntc] > MAXDELTA))
-					skip = true;
+				printf("\n%4d,", (int)refTimerValue);
 			}
-			else
-			{
-				if (lastTemperature[ntc] - temp > MAXDELTA)
-					skip = true;
-			}
-			if (skip)
-				//	printf("*%2.3f\t", temp);
-				printf("------\t");
-			else
-			{
-				//	printf("%2.3f\t", temp);
-				firstOrderAverager[ntc].write((int32_t)(temp * 1000.0));
-				//	displayAverager[ntc].write((int32_t)(temp * 1000.0));
-				displayAverager[ntc].write(firstOrderAverager[ntc].average());
-				printf("t:%2.3f\t", temp);
-				//	printf("fo:%2.3f ", firstOrderAverager[ntc].average() / 1000.0);
-	//			printf("%2.3f\t", displayAverager[ntc].average() / 1000.0);
+			
+			// measure NTC
+			gpio_set_direction(CAP_PIN, GPIO_MODE_OUTPUT); // charge capacitor
+			vTaskDelay(CHARGETIME);
 
-				if (counts > 3)
-				{ // skip first measurements for log
-					//	logAverager[ntc].write(firstOrderAverager[ntc].average());
-					logAverager[ntc].write(displayAverager[ntc].average());
-					//	logAverager[ntc].write((int32_t)(temp * 1000.0));
-					if (ntc == 0)
-					{
-						stdevBuffer[nrStdValues++] = (float)temp;
-						if (nrStdValues >= NRSTDEVVALUES)
-							nrStdValues = 0;
-						stdev = calculateStandardDeviation(NRSTDEVVALUES, stdevBuffer);
-						printf("stdev:%2.3f\t", stdev);
-					}
-				}
-			}
-			lastTemperature[ntc] = temp;
-		}
-		else
-		{
-			printf(" No NTC ");
-			gpio_set_direction(NTCpins[ntc],
-							   GPIO_MODE_INPUT); // set discharge NTC off
+			NTCpin = NTCpins[ntc];
 
-			lastTemperature[ntc] = ERRORTEMP;
-		}
-		gpio_set_direction(CAP_PIN, GPIO_MODE_OUTPUT); // charge capacitor
-		ntc++;
-		if (ntc == NR_NTCS)
-		{
-			ntc = 0;
-			printf("\n");
-			time(&now);
-			localtime_r(&now, &timeinfo);
-			if (lastminute != timeinfo.tm_min)
+			gpio_set_direction(CAP_PIN, GPIO_MODE_INPUT); // charge capacitor off
+
+			startChannel(NTCpin);
+
+			//	if (xQueueReceive(gpio_evt_queue, &gpio_num, RCTIMEOUT))
+			if (waitForIRQ())
 			{
-				lastminute = timeinfo.tm_min; // every minute
-				if (--logPrescaler <= 0)
+				gpio_set_direction(NTCpin, GPIO_MODE_INPUT); // set discharge NTC off
+				//	int r = (int) ( RREF * ntcAverager[ntc].average()) / (float)
+				// refTimerValue; // averaged
+				timer_counter_value -= OFFSET;
+				uint32_t r = (RREF * (timer_counter_value)) / (float)refTimerValue; // real time
+
+				printf("%d,%4d,%3d,%4d,", ntc + 1, (int)timer_counter_value, (int)(refTimerValue - timer_counter_value),
+					   (int)r);
+
+				//	printf("%d: %5d ", ntc, (int)r);
+
+				//  printf("\t%d: r:%d %lld *%4lld ", ntc+1, r, refTimerValue,
+				//         timer_counter_value - OFFSET);
+
+				r -= RSERIES; //
+				float temp = calcTemp(r);
+				bool skip = false;
+				if (temp > lastTemperature[ntc])
 				{
-					for (int n = 0; n < NR_NTCS; n++)
-					{
-						log.temperature[n] = logAverager[n].average() / 1000.0;
-					}
-					addToLog(log);
-
-					if (oldLogInterval != userSettings.logInterval)
-					{
-						oldLogInterval = userSettings.logInterval;
-						saveSettings();
-					}
-					logPrescaler = userSettings.logInterval;
+					if ((temp - lastTemperature[ntc] > MAXDELTA))
+						skip = true;
 				}
-			}
-			displayMssg.displayItem = DISPLAY_ITEM_MEASLINE;
-			displayMssg.showTime = 0;
-			char fmt[6];
-
-			snprintf(fmt, 6, "%%2.%df", userSettings.resolution);
-			for (int n = 0; n < NR_NTCS; n++)
-			{
-				displayMssg.line = n + 1;
-				if (lastTemperature[n] == ERRORTEMP)
-					snprintf(line, MAXCHARSPERLINE, "-");
 				else
-					snprintf(line, MAXCHARSPERLINE, fmt, (displayAverager[n].average() / 1000.0) - userSettings.temperatureOffset[n]);
-				xQueueReceive(displayReadyMssgBox, &displayMssg, 100);
-				xQueueSend(displayMssgBox, &displayMssg, 500 / portTICK_PERIOD_MS);
-				xQueueReceive(displayReadyMssgBox, &displayMssg, 100);
+				{
+					if (lastTemperature[ntc] - temp > MAXDELTA)
+						skip = true;
+				}
+				if (skip)
+					//	printf("*%2.3f\t", temp);
+					printf("------\t");
+				else
+				{
+					firstOrderAverager[ntc].write((int32_t)(temp * 1000.0));
+					displayAverager[ntc].write(firstOrderAverager[ntc].average());
+				//	printf("t:%2.3f\t", temp);
+				//	printf("%2.3f\t", temp);
+
+					printf("%2.3f\t", displayAverager[ntc].average() / 1000.0);
+					
+					if (counts > 3)
+					{ // skip first measurements for log
+						logAverager[ntc].write(displayAverager[ntc].average());
+						if (ntc == 0)
+						{
+							stdevBuffer[nrStdValues++] = (float)temp;
+							if (nrStdValues >= NRSTDEVVALUES)
+								nrStdValues = 0;
+							stdev = calculateStandardDeviation(NRSTDEVVALUES, stdevBuffer);
+						//	printf("stdev:%2.3f\t", stdev);
+						}
+					}
+				}
+				lastTemperature[ntc] = temp;
 			}
-			if (oldDisplayAverages != userSettings.middleInterval)
+			else
 			{
-				oldDisplayAverages = userSettings.middleInterval;
-				for (int n = 0; n < NR_NTCS; n++)
-					displayAverager[n].setAverages(userSettings.middleInterval);
-				saveSettings();
+				printf(" No NTC ");
+				gpio_set_direction(NTCpins[ntc],
+								   GPIO_MODE_INPUT); // set discharge NTC off
+
+				lastTemperature[ntc] = ERRORTEMP;
 			}
-		}
-	}
+			gpio_set_direction(CAP_PIN, GPIO_MODE_OUTPUT); // charge capacitor
+
+			if (ntc == NR_NTCS-1)
+			{
+			//	vTaskDelay(CHARGETIME);		
+				time(&now);
+				localtime_r(&now, &timeinfo);
+				if (lastminute != timeinfo.tm_min)
+				{
+					lastminute = timeinfo.tm_min; // every minute
+					if (--logPrescaler <= 0)
+					{
+						for (int n = 0; n < NR_NTCS; n++)
+						{
+							log.temperature[n] = logAverager[n].average() / 1000.0;
+						}
+						addToLog(log);
+
+						if (oldLogInterval != userSettings.logInterval)
+						{
+							oldLogInterval = userSettings.logInterval;
+							saveSettings();
+						}
+						logPrescaler = userSettings.logInterval;
+					}
+				}
+				displayMssg.displayItem = DISPLAY_ITEM_MEASLINE;
+				displayMssg.showTime = 0;
+				char fmt[6];
+
+				snprintf(fmt, 6, "%%2.%df", userSettings.resolution);
+				for (int n = 0; n < NR_NTCS; n++)
+				{
+					displayMssg.line = n + 1;
+					if (lastTemperature[n] == ERRORTEMP)
+						snprintf(line, MAXCHARSPERLINE, "-");
+					else
+						snprintf(line, MAXCHARSPERLINE, fmt, (displayAverager[n].average() / 1000.0) - userSettings.temperatureOffset[n]);
+					xQueueReceive(displayReadyMssgBox, &displayMssg, 100);
+					xQueueSend(displayMssgBox, &displayMssg, 500 / portTICK_PERIOD_MS);
+					xQueueReceive(displayReadyMssgBox, &displayMssg, 100);
+				}
+				if (oldDisplayAverages != userSettings.middleInterval)
+				{
+					oldDisplayAverages = userSettings.middleInterval;
+					for (int n = 0; n < NR_NTCS; n++)
+						displayAverager[n].setAverages(userSettings.middleInterval);
+					saveSettings();
+				}
+			} //
+		} // for ntc
+	}// while(1)
 }
 
 // called from CGI
