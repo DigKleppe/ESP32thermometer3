@@ -185,11 +185,11 @@ function makeSettingsTable(tableName, descriptorData) {
 			cell = document.createElement("td");
 			cell.setAttribute("calItem", i);
 
-			var button = document.createElement("button");
-			button.innerHTML = "Herstel";
+		//	var button = document.createElement("button");
+	//		button.innerHTML = "Herstel";
 			//	button.className = "button buttonGreen";
-			button.className = "button-3";
-			button.setAttribute("id", "set" + i);
+	//		button.className = "button-3";
+	//		button.setAttribute("id", "set" + i);
 
 			cell.appendChild(button);
 			row.appendChild(cell);
