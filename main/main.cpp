@@ -113,19 +113,9 @@ extern "C"
 					wifiSettings.updated = false;
 					saveSettings();
 				}
-				if (settingsChanged)
-				{
-					settingsChanged = false;
-					vTaskDelay(1000 / portTICK_PERIOD_MS);
-					saveSettings();
-				}
-
-				sprintf(line, "%s  %s", wifiSettings.SSID, myIpAddress);
+				sprintf(line, "%s  %s %s", wifiSettings.SSID, myIpAddress, userSettings.moduleName);
 				xQueueSend(displayMssgBox, &displayMssg, 0);
-
-				//	stats_display();
 			}
-
 			//	stats_display();
 		}
 	}

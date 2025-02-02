@@ -17,7 +17,7 @@
 #include "measureTask.h"
 
 #define MAX_STRLEN 32
-#define USERSETTINGS_CHECKSTR "ttest-5"
+#define USERSETTINGS_CHECKSTR "ttest-6"
 
 typedef struct {
   char spiffsVersion[16]; // holding current version

@@ -122,7 +122,9 @@ function makeInfoTable(descriptorData) {
 	}
 	infoTbl.appendChild(tblBody);
 }
-
+function isNumeric(value) {
+    return /^-?\d+$/.test(value);
+}
 
 // for calibrating and settings
 function makeSettingsTable(tableName, descriptorData) {
@@ -160,7 +162,12 @@ function makeSettingsTable(tableName, descriptorData) {
 
 			cell = document.createElement("td");
 			var input = document.createElement("input");
-			input.setAttribute("type", "number");
+
+			if (isNumeric ( strs[1] ))
+				input.setAttribute("type", "number");
+			else
+				input.setAttribute("type", "text");
+
 			input.value = strs[1];
 			cell.appendChild(input);
 			row.appendChild(cell);
