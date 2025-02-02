@@ -9,10 +9,13 @@
 #define PPS_INT_Sta_REG     GPIO_STATUS_REG         //where you can read the interrupt status 
 #define Pin_INT_W1TC_REG    GPIO_STATUS_W1TC_REG    //where you can write the mask to to clear the interrupt status.
 
+#define TIMR_ADDR_CFG 0x6001f000
 #define TIMR_ADDR_LO 0x6001f004 //(unsigned int*)TIMG_T0LO_REG(0); 
 #define TIMR_ADDR_HI 0x6001f008 
 #define TIMR_ADDR_UPD 0x6001f00c
 
+
+.global timer0Start
 
 .data
 _l5_intr_stack:
@@ -80,6 +83,22 @@ SAVE_EXIT:
 
     rsr     a0, EXCSAVE_5                   /* restore a0 */
     rfi     5
+
+
+timer0Start:
+
+   movi    a3,    TIMR_ADDR_CFG    
+   movi    a4,    (1<<31)  
+   l32i    a12,    a3,    0   // value of cfg register in a12
+   or      a14,    a12,    a4  // set bit 31 
+   s32i    a14, a3, 0   // store in cfg
+
+   retw.n
+
+
+
+
+
 /****************************************************
 //Remember to add the following line in CMakeList.txt:
 target_link_libraries(${COMPONENT_TARGET} "-u ld_include_highint_hdl_my")

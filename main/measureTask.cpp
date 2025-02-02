@@ -35,6 +35,12 @@
 #ifdef ADDCGI
 #include "mdns.h"
 #endif
+#include <esp_private/gpio.h>
+#include <hal/gpio_hal.h>
+
+extern "C" void timer0Start(void);
+
+#define TIMR_ADDR_CFG 0x6001f000
 
 static const char *TAG = "measureTask";
 
@@ -44,7 +50,7 @@ static const char *TAG = "measureTask";
 #define TIMER_DIVIDER (32)							 //  Hardware timer clock divider
 #define TIMER_SCALE (TIMER_BASE_CLK / TIMER_DIVIDER) // convert counter value to seconds
 
-#define OFFSET 24 // counter value  measured without capacitor (at timer divider 8)
+#define OFFSET 29 // counter value  measured without capacitor
 
 #define MAXDELTA 1.0 // if temperature delta > this value measure again.
 
@@ -67,7 +73,7 @@ Averager displayAverager[NR_NTCS];
 Averager refAverager(REFAVERAGES); // for reference resistor
 
 float lastTemperature[NR_NTCS];
-uint64_t refTimerValue;
+uint32_t refTimerValue;
 const gpio_num_t NTCpins[] = {NTC1_PIN, NTC2_PIN, NTC3_PIN, NTC4_PIN};
 uint8_t err;
 gptimer_handle_t gptimer = NULL;
@@ -156,18 +162,36 @@ void RegisterInt(void *you_need_this)
 bool waitForIRQ()
 {
 	int timeOut = 0;
-	irqFlg = 0;
 	while (irqFlg == 0)
 	{
 		vTaskDelay(1);
 		timeOut++;
 		if (timeOut > RCTIMEOUT)
 		{
-		//	printf(" No Ref ");
+			//	printf(" No Ref ");
 			break;
 		}
 	}
 	return irqFlg > 0;
+}
+
+void startChannel(gpio_num_t gpionum)
+{
+	uint32_t *p = (uint32_t *)TIMR_ADDR_CFG;
+	uint32_t val = *p;
+	val &=  0x7FFFFFFF; //	clear bit 31 stop timer 0 
+	*p = val;
+	val |= (1 << 31); // set enablet
+
+//	gptimer_stop(gptimer);
+	gptimer_set_raw_count(gptimer, 0);
+	irqFlg = 0;
+
+	portDISABLE_INTERRUPTS();
+	gpio_output_enable(gpionum); // swith discharge resitor on
+//	gptimer_start( gptimer);
+	*p = val;  // enable timer 0
+	portENABLE_INTERRUPTS();
 }
 
 void IRAM_ATTR measureTask(void *pvParameters)
@@ -187,39 +211,11 @@ void IRAM_ATTR measureTask(void *pvParameters)
 	gpio_num_t NTCpin;
 	int oldDisplayAverages;
 	int oldLogInterval;
-	int timeOut = 0;
 
 	xTaskCreatePinnedToCore(RegisterInt, "allocEXTGPIOINT", 4096, NULL, 0, NULL, 1);
 	// while(1)
 	vTaskDelay(10);
 
-#ifdef SIMULATE
-	float x = 0;
-
-	ESP_LOGI(TAG, "Simulating sensors");
-	while (1)
-	{
-
-		vTaskDelay(1000 / portTICK_PERIOD_MS);
-		//	ESP_LOGI(TAG, "t: %1.2f RH:%1.1f co2:%f", lastVal.temperature,
-		// lastVal.hum, lastVal.co2);
-
-		//		sprintf(str, "3:%d\n\r", (int)lastVal.co2);
-		//		UDPsendMssg(UDPTXPORT, str, strlen(str));
-		//
-		//		sprintf(str, "S: %s t:%1.2f RH:%1.1f co2:%d",
-		// userSettings.moduleName, lastVal.temperature, lastVal.hum, (int)
-		// lastVal.co2); 		UDPsendMssg(UDPTX2PORT, str, strlen(str));
-		//
-		//		ESP_LOGI(TAG, "%s %d", str, logTxIdx);
-		//
-		//		if (connected) {
-		//			vTaskDelay(500 / portTICK_PERIOD_MS); // wait for UDP to
-		// send 			sensorDataIsSend = true;
-		//		}
-	}
-
-#else
 	measureSemaphore = xSemaphoreCreateMutex();
 	xLastWakeTime = xTaskGetTickCount();
 
@@ -229,6 +225,7 @@ void IRAM_ATTR measureTask(void *pvParameters)
 	esp_rom_gpio_pad_select_gpio(CAP_PIN);
 	esp_rom_gpio_pad_select_gpio(RREF_PIN);
 	gpio_set_direction(COMPARATOR_PIN, GPIO_MODE_INPUT);
+	gpio_pullup_en(COMPARATOR_PIN);
 	gpio_set_direction(RREF_PIN, GPIO_MODE_INPUT);
 	gpio_set_level(RREF_PIN, 0);
 	esp_rom_gpio_pad_select_gpio(RREF_PIN);
@@ -267,14 +264,9 @@ void IRAM_ATTR measureTask(void *pvParameters)
 		gpio_set_direction(CAP_PIN, GPIO_MODE_OUTPUT); // charge capacitor
 		vTaskDelay(CHARGETIME);
 
-		//		xQueueReceive(gpio_evt_queue, &gpio_num, 0);  // empty queue
 		gpio_set_direction(CAP_PIN, GPIO_MODE_INPUT); // charge capacitor off
-		//	gpio_set_intr_type(CAP_PIN, GPIO_INTR_NEGEDGE); // irq on again
-		gpio_set_intr_type(COMPARATOR_PIN, GPIO_INTR_NEGEDGE); // irq on again
-		portDISABLE_INTERRUPTS();
-		gptimer_set_raw_count(gptimer, 0);
-		gpio_set_direction(RREF_PIN, GPIO_MODE_OUTPUT); // set discharge resistor on
-		portENABLE_INTERRUPTS();
+
+		startChannel(RREF_PIN);
 
 		waitForIRQ();
 
@@ -289,14 +281,9 @@ void IRAM_ATTR measureTask(void *pvParameters)
 
 		NTCpin = NTCpins[ntc];
 
-		//	xQueueReceive(gpio_evt_queue, &gpio_num, 0);  // empty queue
 		gpio_set_direction(CAP_PIN, GPIO_MODE_INPUT); // charge capacitor off
-		//	gpio_set_intr_type(CAP_PIN, GPIO_INTR_NEGEDGE); // irq on again
-		//		gpio_set_intr_type(COMPARATOR_PIN, GPIO_INTR_NEGEDGE); // irq on again
-		portDISABLE_INTERRUPTS();
-		gptimer_set_raw_count(gptimer, 0);
-		gpio_set_direction(NTCpin, GPIO_MODE_OUTPUT); // set discharge NTC on
-		portENABLE_INTERRUPTS();
+
+		startChannel(NTCpin);
 
 		//	if (xQueueReceive(gpio_evt_queue, &gpio_num, RCTIMEOUT))
 		if (waitForIRQ())
@@ -304,10 +291,14 @@ void IRAM_ATTR measureTask(void *pvParameters)
 			gpio_set_direction(NTCpin, GPIO_MODE_INPUT); // set discharge NTC off
 			//	int r = (int) ( RREF * ntcAverager[ntc].average()) / (float)
 			// refTimerValue; // averaged
-			uint64_t r = (uint64_t)(RREF * (timer_counter_value - OFFSET)) / (float)refTimerValue; // real time
-			//	printf("%d: %d *%4d\t",ntc, refTimerValue, r);
-			printf("%d: %5d ", ntc, (int)r);
-			//  printf("\t%d: r:%d %lld *%4lld ", ntc, r, refTimerValue,
+			timer_counter_value -= OFFSET;
+			uint32_t r = (RREF * (timer_counter_value)) / (float)refTimerValue; // real time
+		
+			printf("%d: %4d %4d %3d *%4d ",ntc+1, (int) refTimerValue, (int) timer_counter_value, ( int) (refTimerValue-timer_counter_value), (int) r);
+		
+		//	printf("%d: %5d ", ntc, (int)r);
+
+			//  printf("\t%d: r:%d %lld *%4lld ", ntc+1, r, refTimerValue,
 			//         timer_counter_value - OFFSET);
 
 			r -= RSERIES; //
@@ -332,9 +323,9 @@ void IRAM_ATTR measureTask(void *pvParameters)
 				firstOrderAverager[ntc].write((int32_t)(temp * 1000.0));
 				//	displayAverager[ntc].write((int32_t)(temp * 1000.0));
 				displayAverager[ntc].write(firstOrderAverager[ntc].average());
-				printf("t:%2.3f ", temp);
+				printf("t:%2.3f\t", temp);
 				//	printf("fo:%2.3f ", firstOrderAverager[ntc].average() / 1000.0);
-				printf("%2.3f\t", displayAverager[ntc].average() / 1000.0);
+	//			printf("%2.3f\t", displayAverager[ntc].average() / 1000.0);
 
 				if (counts > 3)
 				{ // skip first measurements for log
@@ -413,7 +404,6 @@ void IRAM_ATTR measureTask(void *pvParameters)
 			}
 		}
 	}
-#endif
 }
 
 // called from CGI

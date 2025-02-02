@@ -38,7 +38,12 @@
 // #define NTC4_PIN GPIO_NUM_18
 
 
- #define NTC1_PIN		GPIO_NUM_5// 6
+ #define NTC1_PIN		GPIO_NUM_6
+ #define NTC2_PIN		GPIO_NUM_6//7
+ #define NTC3_PIN		GPIO_NUM_6//   17
+ #define NTC4_PIN		GPIO_NUM_6//18
+
+  #define NTC1_PIN		GPIO_NUM_5
  #define NTC2_PIN		GPIO_NUM_5//7
  #define NTC3_PIN		GPIO_NUM_5//   17
  #define NTC4_PIN		GPIO_NUM_5//18

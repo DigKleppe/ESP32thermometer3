@@ -81,7 +81,7 @@ extern "C"
 
 		xTaskCreate(&guiTask, "guiTask", 1024 * 8, NULL, 0, NULL);
 		xTaskCreatePinnedToCore(&measureTask, "measureTask", 3500, NULL, 2, NULL,1);
-		wifiConnect();
+	//	wifiConnect();
 
 		displayMssg.line = 5;
 		displayMssg.str1 = line;
