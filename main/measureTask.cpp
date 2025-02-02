@@ -417,7 +417,7 @@ const CGIdesc_t settingsDescr[] = {{"MiddelInterval", &userSettings.middleInterv
 								   {"TemperatureOffset3", &userSettings.temperatureOffset[2], FLT, 1, -5, 5},
 								   {"TemperatureOffset4", &userSettings.temperatureOffset[3], FLT, 1, -5, 5},
 								   {"Backlight", &userSettings.backLight, INT, 1, 0, 100},
-								   {"", NULL, INT, 0, 0, 0}};
+								   {NULL, NULL, INT, 0, 0, 0}};
 
 CGIurlDesc_t *getCGIurlsTable()
 {
