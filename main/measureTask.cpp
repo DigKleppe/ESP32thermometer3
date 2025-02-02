@@ -172,6 +172,7 @@ bool waitForIRQ()
 			break;
 		}
 	}
+	gptimer_get_raw_count(gptimer, &timer_counter_value);
 	return irqFlg > 0;
 }
 
@@ -179,18 +180,18 @@ void startChannel(gpio_num_t gpionum)
 {
 	uint32_t *p = (uint32_t *)TIMR_ADDR_CFG;
 	uint32_t val = *p;
-	val &= 0x7FFFFFFF; //	clear bit 31 stop timer 0
-	*p = val;
-	val |= (1 << 31); // set enablet
+	val |= (1 << 31); // set enable bit to 1 for timer 0
 
-	//	gptimer_stop(gptimer);
+	gpio_set_direction(CAP_PIN, GPIO_MODE_OUTPUT); // charge capacitor
+	vTaskDelay(CHARGETIME);
+	gpio_set_direction(CAP_PIN, GPIO_MODE_INPUT); // charge capacitor off
 	gptimer_set_raw_count(gptimer, 0);
 	irqFlg = 0;
 
 	portDISABLE_INTERRUPTS();
 	gpio_output_enable(gpionum); // swith discharge resitor on
 								 //	gptimer_start( gptimer);
-	*p = val;					 // enable timer 0
+	*p = val;					 // enable timer 0 (hi speed)
 	portENABLE_INTERRUPTS();
 }
 
@@ -213,7 +214,7 @@ void IRAM_ATTR measureTask(void *pvParameters)
 	int oldLogInterval;
 
 	xTaskCreatePinnedToCore(RegisterInt, "allocEXTGPIOINT", 4096, NULL, 0, NULL, 1);
-	// while(1)
+
 	vTaskDelay(10);
 
 	measureSemaphore = xSemaphoreCreateMutex();
@@ -258,29 +259,17 @@ void IRAM_ATTR measureTask(void *pvParameters)
 
 	for (int n = 0; n < 5; n++) // measure initial value of reference resistor
 	{
-		gpio_set_direction(CAP_PIN, GPIO_MODE_OUTPUT); // charge capacitor
-		vTaskDelay(CHARGETIME);
-
-		gpio_set_direction(CAP_PIN, GPIO_MODE_INPUT); // charge capacitor off
-
 		startChannel(RREF_PIN);
 		waitForIRQ();
 		gpio_set_direction(RREF_PIN, GPIO_MODE_INPUT); // ref off
-		refAverager.write(timer_counter_value - OFFSET);
+		refAverager.write((int) timer_counter_value - OFFSET);
+		printf("ref:%d ", (int)timer_counter_value);
 	}
 
 	while (1)
 	{
 		counts++;
-
-		// measure reference resistor once every cycle
-		gpio_set_direction(CAP_PIN, GPIO_MODE_OUTPUT); // charge capacitor
-		vTaskDelay(CHARGETIME);
-
-		gpio_set_direction(CAP_PIN, GPIO_MODE_INPUT); // charge capacitor off
-
 		startChannel(RREF_PIN);
-
 		waitForIRQ();
 
 		gpio_set_direction(RREF_PIN, GPIO_MODE_INPUT); // ref off
@@ -288,25 +277,18 @@ void IRAM_ATTR measureTask(void *pvParameters)
 		refAverager.write(timer_counter_value - OFFSET);
 		refTimerValue = refAverager.average();
 
-
 		for (ntc = 0; ntc < NR_NTCS; ntc++)
 		{
 			if (ntc == 0)
 			{
 				printf("\n%4d,", (int)refTimerValue);
 			}
-			
+
 			// measure NTC
-			gpio_set_direction(CAP_PIN, GPIO_MODE_OUTPUT); // charge capacitor
-			vTaskDelay(CHARGETIME);
-
 			NTCpin = NTCpins[ntc];
-
-			gpio_set_direction(CAP_PIN, GPIO_MODE_INPUT); // charge capacitor off
 
 			startChannel(NTCpin);
 
-			//	if (xQueueReceive(gpio_evt_queue, &gpio_num, RCTIMEOUT))
 			if (waitForIRQ())
 			{
 				gpio_set_direction(NTCpin, GPIO_MODE_INPUT); // set discharge NTC off
@@ -315,8 +297,7 @@ void IRAM_ATTR measureTask(void *pvParameters)
 				timer_counter_value -= OFFSET;
 				uint32_t r = (RREF * (timer_counter_value)) / (float)refTimerValue; // real time
 
-				printf("%d,%4d,%3d,%4d,", ntc + 1, (int)timer_counter_value, (int)(refTimerValue - timer_counter_value),
-					   (int)r);
+				printf("%d,%4d,%3d,%4d,", ntc + 1, (int)timer_counter_value, (int)(refTimerValue - timer_counter_value), (int)r);
 
 				//	printf("%d: %5d ", ntc, (int)r);
 
@@ -343,11 +324,11 @@ void IRAM_ATTR measureTask(void *pvParameters)
 				{
 					firstOrderAverager[ntc].write((int32_t)(temp * 1000.0));
 					displayAverager[ntc].write(firstOrderAverager[ntc].average());
-				//	printf("t:%2.3f\t", temp);
-				//	printf("%2.3f\t", temp);
+					//	printf("t:%2.3f\t", temp);
+					//	printf("%2.3f\t", temp);
 
 					printf("%2.3f\t", displayAverager[ntc].average() / 1000.0);
-					
+
 					if (counts > 3)
 					{ // skip first measurements for log
 						logAverager[ntc].write(displayAverager[ntc].average());
@@ -357,7 +338,7 @@ void IRAM_ATTR measureTask(void *pvParameters)
 							if (nrStdValues >= NRSTDEVVALUES)
 								nrStdValues = 0;
 							stdev = calculateStandardDeviation(NRSTDEVVALUES, stdevBuffer);
-						//	printf("stdev:%2.3f\t", stdev);
+							//	printf("stdev:%2.3f\t", stdev);
 						}
 					}
 				}
@@ -373,9 +354,9 @@ void IRAM_ATTR measureTask(void *pvParameters)
 			}
 			gpio_set_direction(CAP_PIN, GPIO_MODE_OUTPUT); // charge capacitor
 
-			if (ntc == NR_NTCS-1)
+			if (ntc == NR_NTCS - 1)
 			{
-			//	vTaskDelay(CHARGETIME);		
+
 				time(&now);
 				localtime_r(&now, &timeinfo);
 				if (lastminute != timeinfo.tm_min)
@@ -422,7 +403,7 @@ void IRAM_ATTR measureTask(void *pvParameters)
 				}
 			} //
 		} // for ntc
-	}// while(1)
+	} // while(1)
 }
 
 // called from CGI
@@ -464,6 +445,7 @@ const CGIdesc_t settingsDescr[] = {{"MiddelInterval", &userSettings.middleInterv
 								   {"TemperatureOffset2", &userSettings.temperatureOffset[1], FLT, 1, -5, 5},
 								   {"TemperatureOffset3", &userSettings.temperatureOffset[2], FLT, 1, -5, 5},
 								   {"TemperatureOffset4", &userSettings.temperatureOffset[3], FLT, 1, -5, 5},
+								   {"Backlight", &userSettings.backLight, INT, 1, 0, 100},
 								   {NULL, NULL, INT, 0, 0, 0}};
 
 CGIurlDesc_t *getCGIurlsTable()
@@ -488,23 +470,6 @@ int printLog(log_t *logToPrint, char *pBuffer)
 	return len;
 }
 
-// // todo remove this , include with other settings
-// int getSensorNameScript(char *pBuffer, int count)
-// {
-// 	int len = 0;
-// 	switch (scriptState)
-// 	{
-// 	case 0:
-// 		scriptState++;lastTemperature
-// 		len += sprintf(pBuffer + len, "Actueel,Nieuw\n");
-// 		len += sprintf(pBuffer + len, "%s\n", userSettings.moduleName);
-// 		return len;
-// 		break;
-// 	default:
-// 		break;
-// 	}
-// 	return 0;
-// }
 
 int getInfoValuesScript(char *pBuffer, int count)
 {
@@ -617,8 +582,12 @@ int getRTMeasValuesScript(char *pBuffer, int count)
 		len = sprintf(pBuffer + len, "%u,", (unsigned int)timeStamp++);
 		for (int n = 0; n < NR_NTCS; n++)
 		{
-			len += sprintf(pBuffer + len, fmt, (displayAverager[n].average() / 1000.0) - userSettings.temperatureOffset[n]);
+			if (lastTemperature[n] == ERRORTEMP) 
+				len += sprintf(pBuffer + len, "--,");
+			else
+				len += sprintf(pBuffer + len, fmt, (displayAverager[n].average() / 1000.0) - userSettings.temperatureOffset[n]);
 		}
+
 		len += sprintf(pBuffer + len, "\n");
 		return len;
 		break;

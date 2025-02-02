@@ -26,6 +26,7 @@ typedef struct {
   int resolution;
   int middleInterval;
   int logInterval;
+  int backLight;
   char checkstr[MAX_STRLEN + 1];
 } userSettings_t;
 

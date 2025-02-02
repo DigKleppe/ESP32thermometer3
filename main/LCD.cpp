@@ -25,11 +25,12 @@
 #include "freertos/task.h"
 #include "hal/gpio_types.h"
 #include "lvgl.h"
+#include "driver/ledc.h"
+#include "settings.h"
 #include <stdio.h>
 
 #include "lvgl.h"
-
-
+#include "LCD.h"
 
 #if CONFIG_EXAMPLE_LCD_CONTROLLER_ILI9341
 #include "esp_lcd_ili9341.h"
@@ -60,11 +61,23 @@ static const char *TAG = "guiTask";
 #define EXAMPLE_LCD_GPIO_RST (GPIO_NUM_13)
 #define EXAMPLE_LCD_GPIO_CS (GPIO_NUM_14)
 
-#define EXAMPLE_LCD_GPIO_BL (GPIO_NUM_2)
+//#define EXAMPLE_LCD_GPIO_BL (GPIO_NUM_2)
+
+// backlight
+#define LEDC_TIMER              LEDC_TIMER_1
+#define LEDC_MODE               LEDC_LOW_SPEED_MODE
+#define LEDC_OUTPUT_IO          GPIO_NUM_2 // Define the output GPIO
+#define LEDC_CHANNEL            LEDC_CHANNEL_0
+#define LEDC_DUTY_RES           LEDC_TIMER_13_BIT // Set duty resolution to 13 bits
+#define LEDC_DUTY               (4095) // Set duty to 50%. ((2 ** 13) - 1) * 50% = 4095
+#define LEDC_FREQUENCY          (5000) // Frequency in Hertz. Set frequency at 5 kHz
+
 
 /* LCD IO and panel */
 static esp_lcd_panel_io_handle_t lcd_io = NULL;
 static esp_lcd_panel_handle_t lcd_panel = NULL;
+
+static void initBacklight(void);
 
 /* LVGL display and touch */
 static lv_display_t *lvgl_disp = NULL;
@@ -72,13 +85,14 @@ static lv_display_t *lvgl_disp = NULL;
 esp_err_t app_lcd_init(void) {
 	esp_err_t ret = ESP_OK;
 
-	/* LCD backlight */
-	gpio_config_t bk_gpio_config = {
-		 .pin_bit_mask = 1ULL << EXAMPLE_LCD_GPIO_BL,
-		 .mode = GPIO_MODE_OUTPUT,
-		 .intr_type = GPIO_INTR_DISABLE,
-	};
-	ESP_ERROR_CHECK(gpio_config(&bk_gpio_config));
+
+	// /* LCD backlight */
+	// gpio_config_t bk_gpio_config = {
+	// 	 .pin_bit_mask = 1ULL << EXAMPLE_LCD_GPIO_BL,
+	// 	 .mode = GPIO_MODE_OUTPUT,
+	// 	 .intr_type = GPIO_INTR_DISABLE,
+	// };
+	// ESP_ERROR_CHECK(gpio_config(&bk_gpio_config));
 
 	/* LCD initialization */
 	ESP_LOGD(TAG, "Initialize SPI bus");
@@ -132,7 +146,9 @@ esp_err_t app_lcd_init(void) {
 		esp_lcd_panel_disp_on_off(lcd_panel, true);
 
 		/* LCD backlight on */
-		ESP_ERROR_CHECK(gpio_set_level(EXAMPLE_LCD_GPIO_BL, EXAMPLE_LCD_BL_ON_LEVEL));
+	//	ESP_ERROR_CHECK(gpio_set_level(EXAMPLE_LCD_GPIO_BL, EXAMPLE_LCD_BL_ON_LEVEL));
+		initBacklight();
+		setBacklight(userSettings.backLight);
 		return ret;
 	}
 
@@ -188,3 +204,50 @@ esp_err_t app_lvgl_init(void) {
 	return ESP_OK;
 }
 
+static void initBacklight(void)
+{
+    // Prepare and then apply the LEDC PWM timer configuration
+    ledc_timer_config_t ledc_timer = {
+   	     .speed_mode       = LEDC_MODE,
+	     .duty_resolution  = LEDC_DUTY_RES,
+	     .timer_num        = LEDC_TIMER,
+         .freq_hz          = LEDC_FREQUENCY,  // Set output frequency at 5 kHz
+        .clk_cfg          = LEDC_AUTO_CLK
+    };
+    ESP_ERROR_CHECK(ledc_timer_config(&ledc_timer));
+
+    // Prepare and then apply the LEDC PWM channel configuration
+    ledc_channel_config_t ledc_channel = {
+    	.gpio_num       = LEDC_OUTPUT_IO,
+        .speed_mode     = LEDC_MODE,
+        .channel        = LEDC_CHANNEL,
+		.intr_type      = LEDC_INTR_DISABLE,
+	    .timer_sel      = LEDC_TIMER,
+		.duty           = 0, // Set duty to 0%
+        .hpoint         = 0,
+		.flags =
+		{
+			.output_invert = 1,
+    	}
+    };
+    ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
+}
+
+void setBacklight ( int percent) {
+	uint32_t duty = 0;
+	if ( percent <= 0)
+		percent = 1;
+	if ( percent > 100)
+		percent = 100;
+		
+	if ( percent <= 100)
+		duty = ((1<<13)  * percent) / 100;
+	else
+		duty = percent;
+	if ( duty >= (1<<13))
+		duty = (1<<13) -1;
+
+
+	ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, duty));
+	ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, LEDC_CHANNEL));
+}

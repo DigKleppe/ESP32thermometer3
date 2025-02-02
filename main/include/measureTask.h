@@ -14,12 +14,12 @@
 
 #define NR_NTCS 4
 
-// #include "cgiScripts.h"
+
 #include "settings.h"
 
 // #define SIMULATE 		1
 
-#define REFAVERAGES 64
+#define REFAVERAGES 16
 #define DISPLAYAVERAGES 8
 #define MAXSTRLEN 16
 

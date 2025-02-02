@@ -36,18 +36,24 @@ xt_highint5:
     s32i    a14,    a0,     16  
     s32i    a15,    a0,     20  
 
+   movi    a3,    TIMR_ADDR_CFG    // stop timer
+   movi    a4,    0x7FFFFFFF
+   l32i    a12,    a3,    0   // value of cfg register in a12
+   and     a14,    a12,    a4  // clr bit 31 
+   s32i    a14, a3, 0   // store in cfg
+
 //////////////////////////////////////////////////////////////////
 
-    movi a14, TIMR_ADDR_UPD    //Timer 0 Update address into a10
-    s32i a0, a14, 0         //A write instruction copies the timer to the timer registers
-    movi a14, timer_counter_value  //timer0_value address into a14
-    movi a15, TIMR_ADDR_LO    //Timer 0 lower 32 bits address into a15
-    l32i a13, a15, 0
-    s32i a13, a14, 0        //Store lower 32 bits to timer0_value
-    movi a15, TIMR_ADDR_HI    //Timer 0 higher 32 bits address into a15
-    l32i a13, a15, 0
-    s32i a13, a14, 4        //Store higher 32 bits to timer0_value
-    memw
+ //   movi a14, TIMR_ADDR_UPD    //Timer 0 Update address into a10
+ //   s32i a0, a14, 0         //A write instruction copies the timer to the timer registers
+ //   movi a14, timer_counter_value  //timer0_value address into a14
+ //   movi a15, TIMR_ADDR_LO    //Timer 0 lower 32 bits address into a15
+ //   l32i a13, a15, 0
+ //   s32i a13, a14, 0        //Store lower 32 bits to timer0_value
+ //   movi a15, TIMR_ADDR_HI    //Timer 0 higher 32 bits address into a15
+ //   l32i a13, a15, 0
+ //   s32i a13, a14, 4        //Store higher 32 bits to timer0_value
+ //   memw
 
 YourCodeHere:    
     //If you have multiple level-5 interrupt, you may have to determine which source triggered the interrupt

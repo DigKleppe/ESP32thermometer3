@@ -22,7 +22,7 @@
 #include "settings.h"
 #include "spiffs.h"
 #include "wifiConnect.h"
-
+#include "LCD.h"
 #include "guiTask.h"
 
 #include <stdbool.h>
@@ -47,14 +47,12 @@ extern "C"
 	{
 		esp_err_t err;
 		displayMssg_t displayMssg;
-		char line[50];
+		char line[70];
 		int timeOut = 0;
 		uint32_t upTime = 0;
 		bool toggle = false;
 		TimerHandle_t xTimer;
-
-		//	char newStorageVersion[MAX_STORAGEVERSIONSIZE] = { };
-
+	
 		gpio_set_direction(LED_PIN, GPIO_MODE_OUTPUT);
 		gpio_set_level(LED_PIN, 0);
 
@@ -95,6 +93,7 @@ extern "C"
 			if (settingsChanged)
 			{
 				settingsChanged = false;
+				setBacklight(userSettings.backLight);
 				saveSettings();
 			}
 			if ((connectStatus != IP_RECEIVED))
@@ -113,7 +112,7 @@ extern "C"
 					wifiSettings.updated = false;
 					saveSettings();
 				}
-				sprintf(line, "%s  %s %s", wifiSettings.SSID, myIpAddress, userSettings.moduleName);
+				snprintf(line, sizeof(line), "%s  %s  %s", wifiSettings.SSID, myIpAddress, userSettings.moduleName);
 				xQueueSend(displayMssgBox, &displayMssg, 0);
 			}
 			//	stats_display();

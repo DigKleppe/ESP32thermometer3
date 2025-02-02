@@ -28,6 +28,7 @@ const userSettings_t userSettingsDefaults = {"0.0",        // spiffsVersion[16]
                                              { 2 }, // resolution
                                              { 5 }, // middleInterval for display
                                              { 5 }, //loginterval in minutes
+                                             { 50 }, // backlight
                                              {USERSETTINGS_CHECKSTR}
 };
 
@@ -85,6 +86,7 @@ userSettings_t userSettings;
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "settings.h"
+#include "LCD.h"
 // #include "wifiConnect.h"
 #include <cerrno>
 #include <string.h>
