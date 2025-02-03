@@ -411,7 +411,7 @@ void measureTask(void *pvParameters)
 		len = sprintf(pBuffer, "%d,", (int)logToPrint->timeStamp);
 		for (int n = 0; n < NR_NTCS; n++)
 		{
-			len += sprintf(pBuffer + len, "%3.2f,", logToPrint->temperature[n] - userSettings.temperatureOffset[n]);
+			len += sprintf(pBuffer + len, "%3.3f,", logToPrint->temperature[n] - userSettings.temperatureOffset[n]);
 		}
 		len += sprintf(pBuffer + len, "\n");
 		return len;
@@ -429,7 +429,7 @@ void measureTask(void *pvParameters)
 			for (int n = 0; n < NR_NTCS; n++)
 			{
 				sprintf(str, "Sensor %d", n + 1);
-				len += sprintf(pBuffer + len, "%s,%3.2f,%3.2f\n", str, lastTemperature[n] - userSettings.temperatureOffset[n],
+				len += sprintf(pBuffer + len, "%s,%3.3f,%3.3f\n", str, lastTemperature[n] - userSettings.temperatureOffset[n],
 							   userSettings.temperatureOffset[n]); // send values and offset
 			};
 			return len;

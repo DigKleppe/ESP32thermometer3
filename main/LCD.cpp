@@ -45,7 +45,7 @@ static const char *TAG = "guiTask";
 
 /* LCD settings */
 #define EXAMPLE_LCD_SPI_NUM (SPI3_HOST)
-#define EXAMPLE_LCD_PIXEL_CLK_HZ (20 * 1000 * 1000)
+#define EXAMPLE_LCD_PIXEL_CLK_HZ (10 * 1000 * 1000) // 10 MHz	max!
 #define EXAMPLE_LCD_CMD_BITS (8)
 #define EXAMPLE_LCD_PARAM_BITS (8)
 #define EXAMPLE_LCD_COLOR_SPACE (ESP_LCD_COLOR_SPACE_RGB)
