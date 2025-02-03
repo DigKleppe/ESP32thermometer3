@@ -13,15 +13,12 @@
 #include "freertos/task.h"
 
 #define NR_NTCS 4
-
-
 #include "settings.h"
 
 // #define SIMULATE 		1
 
 #define REFAVERAGES 16
 #define DISPLAYAVERAGES 8
-#define MAXSTRLEN 16
 
 // #define RREF			10000.0			// in ohms
 
@@ -72,14 +69,6 @@ extern SemaphoreHandle_t
 typedef struct {
   float temperature[NR_NTCS];
 } calValues_t;
-
-typedef struct {
-  char averegedValue[MAXSTRLEN + 1];
-  char momentaryValue[MAXSTRLEN + 1];
-
-} measValues_t;
-
-extern measValues_t measValues;
 
 int getRTMeasValuesScript(char *pBuffer, int count);
 int getNewMeasValuesScript(char *pBuffer, int count);

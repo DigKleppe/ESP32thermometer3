@@ -19,16 +19,12 @@
 
 static const char *TAG = "guiTask";
 
-
 QueueHandle_t displayMssgBox;
-QueueHandle_t displayReadyMssgBox;
 volatile bool displayReady;
-
-
 
 #define COLL1WIDTH 50
 #define COLL2WIDTH 160
-#define COLL3WIDTH 65
+#define COLL3WIDTH 60
 #define ROW1HEIGHT 40
 
 static lv_obj_t *measvalueLabel[4];
@@ -112,15 +108,13 @@ void guiTask(void *pvParameter) {
 	displayMssg_t recDdisplayMssg;
 	int dummy = 0;
 
-	displayMssgBox = xQueueCreate(1, sizeof(displayMssg_t));
-	displayReadyMssgBox = xQueueCreate(1, sizeof(uint32_t));
+	displayMssgBox = xQueueCreate(10, sizeof(displayMssg_t));
 
  /* LCD HW initialization */
   ESP_ERROR_CHECK(app_lcd_init());
 
   /* LVGL initialization */
   ESP_ERROR_CHECK(app_lvgl_init());
-
 
 	buildMainScreen();
 
@@ -129,15 +123,16 @@ void guiTask(void *pvParameter) {
 		if (xQueueReceive(displayMssgBox, (void *const)&recDdisplayMssg, portMAX_DELAY) == pdTRUE) {
 			int line = recDdisplayMssg.line-1;
 			lvgl_port_lock(0);
+			printf("line: %d, str1: %s\n", line, recDdisplayMssg.text);
 			if (line <= 3) {
-				lv_label_set_text_fmt(measvalueLabel[line], recDdisplayMssg.str1);
+				lv_label_set_text_fmt(measvalueLabel[line], recDdisplayMssg.text);
 			} else {
-				lv_label_set_text(infoLabel, recDdisplayMssg.str1);
+				lv_label_set_text(infoLabel, recDdisplayMssg.text);
 			}
 			lvgl_port_unlock();
 			if (recDdisplayMssg.showTime)
 				vTaskDelay(recDdisplayMssg.showTime / portTICK_PERIOD_MS);
-			xQueueSend(displayReadyMssgBox, &dummy, 0);
+			free(recDdisplayMssg.text);	
 		}
 	}
 }

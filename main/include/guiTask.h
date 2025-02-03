@@ -11,30 +11,14 @@
 #include "freertos/queue.h"
 
 extern QueueHandle_t displayMssgBox;
-extern QueueHandle_t displayReadyMssgBox;
 extern volatile bool displayReady;
 
-typedef enum {
-  DISPLAY_ITEM_STATUSLINE,
-  DISPLAY_ITEM_MEASLINE,
-  DISPLAY_ITEM_MESSAGE,
-  DISPLAY_ITEM_COLOR,
-  DISPLAY_ITEM_STOP
-} displayItem_t;
-
 typedef struct {
-  displayItem_t displayItem;
+  char *text;
   int line;
   int showTime;
-  char *str1;
 } displayMssg_t;
 
-#define MAXCHARSPERLINE 11
-#define MAXLINES 8
-
-typedef struct {
-  char line[MAXCHARSPERLINE + 1];
-} line_t;
 
 extern "C" {
 

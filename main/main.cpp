@@ -32,6 +32,7 @@
 
 static const char *TAG = "main";
 
+#define MAXSTRLEN 80
 const gpio_num_t LED_PIN = GPIO_NUM_9;
 
 uint32_t timeStamp;
@@ -47,8 +48,6 @@ extern "C"
 	{
 		esp_err_t err;
 		displayMssg_t displayMssg;
-		char line[70];
-		int timeOut = 0;
 		uint32_t upTime = 0;
 		bool toggle = false;
 		TimerHandle_t xTimer;
@@ -77,13 +76,12 @@ extern "C"
 		xTimer = xTimerCreate("Timer", 10, pdTRUE, (void *)0, vTimerCallback);
 		xTimerStart(xTimer, 0);
 
+		vTaskDelay(500 / portTICK_PERIOD_MS);
 		xTaskCreate(&guiTask, "guiTask", 1024 * 8, NULL, 0, NULL);
 		xTaskCreatePinnedToCore(&measureTask, "measureTask", 3500, NULL, 2, NULL,1);
 		wifiConnect();
 
 		displayMssg.line = 5;
-		displayMssg.str1 = line;
-		displayMssg.displayItem = DISPLAY_ITEM_MEASLINE;
 		displayMssg.showTime = 0;
 
 		while (1)
@@ -100,8 +98,14 @@ extern "C"
 			{
 				toggle = !toggle;
 				gpio_set_level(LED_PIN, toggle);
-				sprintf(line, "Verbinden met %s", wifiSettings.SSID);
-				xQueueSend(displayMssgBox, &displayMssg, 0);
+
+				displayMssg.text = (char *) malloc(MAXSTRLEN);
+				if ( displayMssg.text == NULL)
+					ESP_LOGE(TAG, "malloc failed");
+				else {
+					snprintf(displayMssg.text, MAXSTRLEN, "Verbinden met %s", wifiSettings.SSID);
+		 		xQueueSend(displayMssgBox, &displayMssg,portMAX_DELAY);
+				}
 			}
 			else
 			{
@@ -112,10 +116,15 @@ extern "C"
 					wifiSettings.updated = false;
 					saveSettings();
 				}
-				snprintf(line, sizeof(line), "%s  %s  %s", wifiSettings.SSID, myIpAddress, userSettings.moduleName);
-				xQueueSend(displayMssgBox, &displayMssg, 0);
+				displayMssg.text = (char *) malloc(MAXSTRLEN);
+				if ( displayMssg.text == NULL)
+					ESP_LOGE(TAG, "malloc failed");
+				else {
+					snprintf(displayMssg.text, MAXSTRLEN, "%s  %s  %s", wifiSettings.SSID, myIpAddress, userSettings.moduleName);
+	
+					xQueueSend(displayMssgBox, &displayMssg, portMAX_DELAY);
+				}			
 			}
-			//	stats_display();
 		}
 	}
 }

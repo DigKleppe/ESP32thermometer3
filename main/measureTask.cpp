@@ -32,6 +32,7 @@
 
 #define ADDCGI
 
+
 #ifdef ADDCGI
 #include "mdns.h"
 #endif
@@ -51,19 +52,12 @@ static const char *TAG = "measureTask";
 #define OFFSET 29 // counter value  measured without capacitor
 
 #define MAXDELTA 999 // not used anymore if temperature delta > this value measure again.
+#define MAXSTRLEN 16
 
 extern float tmpTemperature;
 extern int scriptState;
 
-// static xQueueHandle gpio_evt_queue = NULL;
-static QueueHandle_t gpio_evt_queue = NULL;
-SemaphoreHandle_t measureSemaphore;
-uint32_t gpio_num;
-bool sensorDataIsSend;
 
-uint64_t timer_counter_value;
-int irqcntr;
-measValues_t measValues;
 
 Averager firstOrderAverager[NR_NTCS]; // first order
 Averager logAverager[NR_NTCS];		  // second order
@@ -73,13 +67,15 @@ Averager refAverager(REFAVERAGES); // for reference resistor
 float lastTemperature[NR_NTCS];
 uint32_t refTimerValue;
 const gpio_num_t NTCpins[] = {NTC1_PIN, NTC2_PIN, NTC3_PIN, NTC4_PIN};
-uint8_t err;
+uint64_t timer_counter_value;
+int irqcntr;
+
 gptimer_handle_t gptimer = NULL;
 
-#define NRSTDEVVALUES 20
+// #define NRSTDEVVALUES 20
+// float stdevBuffer[NRSTDEVVALUES];
+// int nrStdValues;
 
-float stdevBuffer[NRSTDEVVALUES];
-int nrStdValues;
 uint32_t irqFlg;
 uint32_t IntCounter[2]; // TEST ONLY
 
@@ -115,14 +111,10 @@ void RegisterInt(void *you_need_this)
 		.mode = GPIO_MODE_INPUT,
 		.pull_up_en = GPIO_PULLUP_ENABLE,
 		.pull_down_en = GPIO_PULLDOWN_DISABLE,
-		// .intr_type=GPIO_INTR_LOW_LEVEL,
 		.intr_type = GPIO_INTR_NEGEDGE,
-
 	};
 	ESP_ERROR_CHECK(gpio_config(&interrupt_pin));
 	ESP_INTR_DISABLE(31);
-	// intr_matrix_set(1, ETS_GPIO_INTR_SOURCE, 31);
-
 	err = esp_intr_alloc(ETS_GPIO_INTR_SOURCE, ESP_INTR_FLAG_IRAM | ESP_INTR_FLAG_LEVEL5, NULL, NULL, &handle);
 	if (err != ESP_OK)
 	{
@@ -131,7 +123,6 @@ void RegisterInt(void *you_need_this)
 			vTaskDelay(500 / portTICK_PERIOD_MS);
 		return;
 	}
-
 	ESP_INTR_ENABLE(31);
 	while (1)
 		vTaskDelay(500 / portTICK_PERIOD_MS);
@@ -148,15 +139,14 @@ bool waitForIRQ()
 		timeOut++;
 		if (timeOut > RCTIMEOUT)
 		{
-			//	printf(" No Ref ");
-			break;
+			return false;
 		}
 	}
 	gptimer_get_raw_count(gptimer, &timer_counter_value);
-	return irqFlg > 0;
+	return true;
 }
 
-void startChannel(gpio_num_t gpionum)
+void IRAM_ATTR startChannel(gpio_num_t gpionum)
 {
 	uint32_t *p = (uint32_t *)TIMR_ADDR_CFG;
 	uint32_t val = *p;
@@ -175,32 +165,24 @@ void startChannel(gpio_num_t gpionum)
 	portENABLE_INTERRUPTS();
 }
 
-void IRAM_ATTR measureTask(void *pvParameters)
+void measureTask(void *pvParameters)
 {
-	TickType_t xLastWakeTime;
+//	TickType_t xLastWakeTime;
 	int ntc = 0;
 	int counts = 0;
 	int lastminute = -1;
 	int logPrescaler = LOGINTERVAL;
 	time_t now;
 	struct tm timeinfo;
-	char line[MAXCHARSPERLINE];
 	displayMssg_t displayMssg;
-	displayMssg.str1 = line;
 	log_t log;
-	float stdev;
-	gpio_num_t NTCpin;
+//	float stdev;
 	int oldDisplayAverages;
 	int oldLogInterval;
 
-	xTaskCreatePinnedToCore(RegisterInt, "allocEXTGPIOINT", 4096, NULL, 0, NULL, 1);
+	xTaskCreatePinnedToCore(RegisterInt, "allocEXTGPIOINT", 4096, NULL, 0, NULL, 1); // register interrupt for comparator
 
-	vTaskDelay(10);
-
-	measureSemaphore = xSemaphoreCreateMutex();
-	xLastWakeTime = xTaskGetTickCount();
-
-	timerInit();
+	timerInit(); // measuring RC time constant
 
 	esp_rom_gpio_pad_select_gpio(CAP_PIN);
 	esp_rom_gpio_pad_select_gpio(RREF_PIN);
@@ -210,7 +192,6 @@ void IRAM_ATTR measureTask(void *pvParameters)
 	gpio_set_level(RREF_PIN, 0);
 	esp_rom_gpio_pad_select_gpio(RREF_PIN);
 	gpio_set_drive_capability(RREF_PIN, GPIO_DRIVE_CAP_3);
-
 	gpio_set_level(CAP_PIN, 1);
 
 	for (int n = 0; n < NR_NTCS; n++)
@@ -220,7 +201,6 @@ void IRAM_ATTR measureTask(void *pvParameters)
 		gpio_set_level(NTCpins[ntc], 0);
 		logAverager[n].setAverages(AVGERAGESAMPLES);
 		firstOrderAverager[n].setAverages(FIRSTORDERAVERAGES);
-		//	displayAverager[n].setAverages(DISPLAYAVERAGES);
 		displayAverager[n].setAverages(userSettings.middleInterval);
 		lastTemperature[n] = ERRORTEMP;
 		gpio_set_drive_capability(NTCpins[n], GPIO_DRIVE_CAP_3);
@@ -256,28 +236,22 @@ void IRAM_ATTR measureTask(void *pvParameters)
 		for (ntc = 0; ntc < NR_NTCS; ntc++)
 		{
 			if (ntc == 0)
-			{
 				printf("\n%4d,", (int)refTimerValue);
-			}
-
+			
 			// measure NTC
-			NTCpin = NTCpins[ntc];
-			startChannel(NTCpin);
+			startChannel( NTCpins[ntc]);
 
 			if (waitForIRQ())
 			{
-				gpio_set_direction(NTCpin, GPIO_MODE_INPUT); // set discharge NTC off
+				gpio_set_direction(NTCpins[ntc], GPIO_MODE_INPUT); // set discharge NTC off
 				timer_counter_value -= OFFSET;
 				uint32_t r = (RREF * (timer_counter_value)) / (float)refTimerValue; // real time
+				r -= RSERIES;
 
 				printf("%d,%4d,%3d,%4d,", ntc + 1, (int)timer_counter_value, (int)(refTimerValue - timer_counter_value), (int)r);
-
 				//	printf("%d: %5d ", ntc, (int)r);
-
 				//  printf("\t%d: r:%d %lld *%4lld ", ntc+1, r, refTimerValue,
 				//         timer_counter_value - OFFSET);
-
-				r -= RSERIES; //
 				float temp = calcTemp(r);
 				bool skip = false;
 				if (temp > lastTemperature[ntc])
@@ -291,7 +265,6 @@ void IRAM_ATTR measureTask(void *pvParameters)
 						skip = true;
 				}
 				if (skip)
-					//	printf("*%2.3f\t", temp);
 					printf("------\t");
 				else
 				{
@@ -299,20 +272,19 @@ void IRAM_ATTR measureTask(void *pvParameters)
 					displayAverager[ntc].write(firstOrderAverager[ntc].average());
 					//	printf("t:%2.3f\t", temp);
 					//	printf("%2.3f\t", temp);
-
 					printf("%2.3f\t", displayAverager[ntc].average() / 1000.0);
 
 					if (counts > 3)
 					{ // skip first measurements for log
 						logAverager[ntc].write(displayAverager[ntc].average());
-						if (ntc == 0)
-						{
-							stdevBuffer[nrStdValues++] = (float)temp;
-							if (nrStdValues >= NRSTDEVVALUES)
-								nrStdValues = 0;
-							stdev = calculateStandardDeviation(NRSTDEVVALUES, stdevBuffer);
-							//	printf("stdev:%2.3f\t", stdev);
-						}
+					//	if (ntc == 0)
+					//	{
+						//	stdevBuffer[nrStdValues++] = (float)temp;
+						//	if (nrStdValues >= NRSTDEVVALUES)
+						//		nrStdValues = 0;
+						//		stdev = calculateStandardDeviation(NRSTDEVVALUES, stdevBuffer);
+						//	printf("stdev:%2.3f\t", stdev);
+					//	}
 					}
 				}
 				lastTemperature[ntc] = temp;
@@ -321,7 +293,6 @@ void IRAM_ATTR measureTask(void *pvParameters)
 			{
 				printf(" No NTC ");
 				gpio_set_direction(NTCpins[ntc], GPIO_MODE_INPUT); // set discharge NTC off
-
 				lastTemperature[ntc] = ERRORTEMP;
 			}
 			gpio_set_direction(CAP_PIN, GPIO_MODE_OUTPUT); // charge capacitor
@@ -349,21 +320,26 @@ void IRAM_ATTR measureTask(void *pvParameters)
 						logPrescaler = userSettings.logInterval;
 					}
 				}
-				displayMssg.displayItem = DISPLAY_ITEM_MEASLINE;
+				// display
 				displayMssg.showTime = 0;
 				char fmt[6];
-
 				snprintf(fmt, 6, "%%2.%df", userSettings.resolution);
+
 				for (int n = 0; n < NR_NTCS; n++)
 				{
-					displayMssg.line = n + 1;
-					if (lastTemperature[n] == ERRORTEMP)
-						snprintf(line, MAXCHARSPERLINE, "-");
+					displayMssg.text = (char *)  malloc(MAXSTRLEN);
+					if (displayMssg.text == NULL)
+						ESP_LOGE(TAG, "malloc failed");
 					else
-						snprintf(line, MAXCHARSPERLINE, fmt, (displayAverager[n].average() / 1000.0) - userSettings.temperatureOffset[n]);
-					xQueueReceive(displayReadyMssgBox, &displayMssg, 100);
-					xQueueSend(displayMssgBox, &displayMssg, 500 / portTICK_PERIOD_MS);
-					xQueueReceive(displayReadyMssgBox, &displayMssg, 100);
+					{
+						displayMssg.line = n + 1;
+						if (lastTemperature[n] == ERRORTEMP)
+							snprintf(displayMssg.text, MAXSTRLEN, "-");
+						else
+							snprintf(displayMssg.text, MAXSTRLEN, fmt, (displayAverager[n].average() / 1000.0) - userSettings.temperatureOffset[n]);
+						
+						xQueueSend(displayMssgBox, &displayMssg, portMAX_DELAY);
+					}
 				}
 				if (oldDisplayAverages != userSettings.middleInterval)
 				{
@@ -372,204 +348,204 @@ void IRAM_ATTR measureTask(void *pvParameters)
 						displayAverager[n].setAverages(userSettings.middleInterval);
 					saveSettings();
 				}
-			} //
-		} // for ntc
-	} // while(1)
+			} // for ntc
+		} // while(1)
+	}
 }
 
 // called from CGI
 #ifdef ADDCGI
 #include "cgiScripts.h"
 
-int buildSettingsTable(char *pBuffer, int count);
-int actionRespScript(char *pBuffer, int count);
-int freadCGI(char *buffer, int count);
-int readVarScript(char *pBuffer, int count);
+	int buildSettingsTable(char *pBuffer, int count);
+	int actionRespScript(char *pBuffer, int count);
+	int freadCGI(char *buffer, int count);
+	int readVarScript(char *pBuffer, int count);
 
-int getAllLogsScript(char *pBuffer, int count);
-int getNewLogsScript(char *pBuffer, int count);
-int clearLogScript(char *pBuffer, int count);
+	int getAllLogsScript(char *pBuffer, int count);
+	int getNewLogsScript(char *pBuffer, int count);
+	int clearLogScript(char *pBuffer, int count);
 
-bool readActionScript(char *pcParam, const CGIdesc_t *CGIdescTable, int size);
-char *readCGIvalues(int iIndex, char *pcParam);
+	bool readActionScript(char *pcParam, const CGIdesc_t *CGIdescTable, int size);
+	char *readCGIvalues(int iIndex, char *pcParam);
 
-const CGIurlDesc_t CGIurls[] = {
-	{"/cgi-bin/readvar", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)readVarScript},	// !!!!!! leave this index  !!
-	{"/cgi-bin/writevar", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)readVarScript},	// !!!!!! leave this index  !!
-	{"/action_page.php", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)actionRespScript}, // !!!!!! leave this index  !!
-	{"/cgi-bin/getAllLogs", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)getAllLogsScript},
-	{"/cgi-bin/getNewLogs", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)getNewLogsScript},
-	{"/cgi-bin/clearLog", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)clearLogScript},
-	{"/cgi-bin/getInfoValues", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)getInfoValuesScript},
-	{"/cgi-bin/getCalValues", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)buildCalTable},
-	{"/cgi-bin/getSettingsTable", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)buildSettingsTable},
-	{"/cgi-bin/getRTMeasValues", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)getRTMeasValuesScript},
-	{"/cgi-bin/saveSettings", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)saveSettingsScript},
-	{"/cgi-bin/cancelSettings", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)cancelSettingsScript},
-	{"", NULL, NULL}};
+	const CGIurlDesc_t CGIurls[] = {
+		{"/cgi-bin/readvar", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)readVarScript},	// !!!!!! leave this index  !!
+		{"/cgi-bin/writevar", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)readVarScript},	// !!!!!! leave this index  !!
+		{"/action_page.php", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)actionRespScript}, // !!!!!! leave this index  !!
+		{"/cgi-bin/getAllLogs", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)getAllLogsScript},
+		{"/cgi-bin/getNewLogs", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)getNewLogsScript},
+		{"/cgi-bin/clearLog", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)clearLogScript},
+		{"/cgi-bin/getInfoValues", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)getInfoValuesScript},
+		{"/cgi-bin/getCalValues", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)buildCalTable},
+		{"/cgi-bin/getSettingsTable", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)buildSettingsTable},
+		{"/cgi-bin/getRTMeasValues", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)getRTMeasValuesScript},
+		{"/cgi-bin/saveSettings", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)saveSettingsScript},
+		{"/cgi-bin/cancelSettings", (tCGIHandler_t)readCGIvalues, (CGIresponseFileHandler_t)cancelSettingsScript},
+		{"", NULL, NULL}};
 
-const CGIdesc_t settingsDescr[] = {{"MiddelInterval", &userSettings.middleInterval, INT, 1, 1, 100},
-								   {"LogInterval (min)", &userSettings.logInterval, INT, 1, 1, 60},
-								   {"Resolutie", &userSettings.resolution, INT, 1, 1, 3},
-								   {"Modulenaam", &userSettings.moduleName, STR, 1, 1, MAX_STRLEN},
-								   {"TemperatureOffset1", &userSettings.temperatureOffset[0], FLT, 1, -5, 5}, // todo
-								   {"TemperatureOffset2", &userSettings.temperatureOffset[1], FLT, 1, -5, 5},
-								   {"TemperatureOffset3", &userSettings.temperatureOffset[2], FLT, 1, -5, 5},
-								   {"TemperatureOffset4", &userSettings.temperatureOffset[3], FLT, 1, -5, 5},
-								   {"Backlight", &userSettings.backLight, INT, 1, 0, 100},
-								   {NULL, NULL, INT, 0, 0, 0}};
+	const CGIdesc_t settingsDescr[] = {{"MiddelInterval", &userSettings.middleInterval, INT, 1, 1, 100},
+									   {"LogInterval (min)", &userSettings.logInterval, INT, 1, 1, 60},
+									   {"Resolutie", &userSettings.resolution, INT, 1, 1, 3},
+									   {"Modulenaam", &userSettings.moduleName, STR, 1, 1, MAX_STRLEN},
+									   {"TemperatureOffset1", &userSettings.temperatureOffset[0], FLT, 1, -5, 5}, // todo
+									   {"TemperatureOffset2", &userSettings.temperatureOffset[1], FLT, 1, -5, 5},
+									   {"TemperatureOffset3", &userSettings.temperatureOffset[2], FLT, 1, -5, 5},
+									   {"TemperatureOffset4", &userSettings.temperatureOffset[3], FLT, 1, -5, 5},
+									   {"Backlight", &userSettings.backLight, INT, 1, 0, 100},
+									   {NULL, NULL, INT, 0, 0, 0}};
 
-CGIurlDesc_t *getCGIurlsTable()
-{
-	return (CGIurlDesc_t *)CGIurls;
-}
-
-CGIdesc_t *getSettingsDescriptorTable()
-{
-	return (CGIdesc_t *)settingsDescr;
-}
-
-int printLog(log_t *logToPrint, char *pBuffer)
-{
-	int len;
-	len = sprintf(pBuffer, "%d,", (int)logToPrint->timeStamp);
-	for (int n = 0; n < NR_NTCS; n++)
+	CGIurlDesc_t *getCGIurlsTable()
 	{
-		len += sprintf(pBuffer + len, "%3.2f,", logToPrint->temperature[n] - userSettings.temperatureOffset[n]);
+		return (CGIurlDesc_t *)CGIurls;
 	}
-	len += sprintf(pBuffer + len, "\n");
-	return len;
-}
 
-int getInfoValuesScript(char *pBuffer, int count)
-{
-	int len = 0;
-	char str[10];
-	switch (scriptState)
+	CGIdesc_t *getSettingsDescriptorTable()
 	{
-	case 0:
-		scriptState++;
-		len += sprintf(pBuffer + len, "%s\n", "Meting,Actueel,Offset");
+		return (CGIdesc_t *)settingsDescr;
+	}
+
+	int printLog(log_t * logToPrint, char *pBuffer)
+	{
+		int len;
+		len = sprintf(pBuffer, "%d,", (int)logToPrint->timeStamp);
 		for (int n = 0; n < NR_NTCS; n++)
 		{
-			sprintf(str, "Sensor %d", n + 1);
-			len += sprintf(pBuffer + len, "%s,%3.2f,%3.2f\n", str, lastTemperature[n] - userSettings.temperatureOffset[n],
-						   userSettings.temperatureOffset[n]); // send values and offset
-		};
-		return len;
-		break;
-	default:
-		break;
-	}
-	return 0;
-}
-
-// build javascript tables
-
-int buildCalTable(char *pBuffer, int count)
-{
-	int len = 0;
-	switch (scriptState)
-	{
-	case 0:
-		scriptState++;
-		len += sprintf(pBuffer + len, "%s\n", "Meting,Referentie,Stel in"); // header  table
-		len += sprintf(pBuffer + len, "%s\n", "Sensor 1,-\n Sensor 2,-\n Sensor 3,-\n Sensor 4,-");
-		return len;
-		break;
-	default:
-		break;
-	}
-	return 0;
-}
-int buildSettingsTable(char *pBuffer, int count)
-{
-	int len = 0;
-	switch (scriptState)
-	{
-	case 0:
-		scriptState++;
-		len += sprintf(pBuffer + len, "%s\n", "Item,Waarde,Stel in"); // header  table
-		for (int n = 0; (settingsDescr[n].nrValues > 0); n++)
-		{ // loop over all settings names
-			len += sprintf(pBuffer + len, "%s,", settingsDescr[n].name);
-			switch (settingsDescr[n].varType)
-			{
-			case INT:
-				len += sprintf(pBuffer + len, "%d\n", *(int *)(settingsDescr[n].pValue));
-				break;
-			case FLT:
-				len += sprintf(pBuffer + len, "%3.2f\n", *(float *)(settingsDescr[n].pValue));
-				break;
-			case STR:
-				len += sprintf(pBuffer + len, "%s\n", (char *)(settingsDescr[n].pValue));
-				break;
-			default:
-				break;
-			}
+			len += sprintf(pBuffer + len, "%3.2f,", logToPrint->temperature[n] - userSettings.temperatureOffset[n]);
 		}
-		return len;
-		break;
-	default:
-		break;
-	}
-	return 0;
-}
-
-int saveSettingsScript(char *pBuffer, int count)
-{
-	saveSettings();
-	return 0;
-}
-
-int cancelSettingsScript(char *pBuffer, int count)
-{
-	loadSettings();
-	return 0;
-}
-
-calValues_t calValues = {NOCAL, NOCAL, NOCAL, NOCAL};
-// @formatter:off
-char tempName[MAX_STRLEN];
-
-const CGIdesc_t writeVarDescriptors[] = {{"Temperatuur", &calValues.temperature, FLT, NR_NTCS}, {"moduleName", tempName, STR, 1}};
-
-#define NR_CALDESCRIPTORS (sizeof(writeVarDescriptors) / sizeof(CGIdesc_t))
-// @formatter:on
-
-int getRTMeasValuesScript(char *pBuffer, int count)
-{
-	int len = 0;
-
-	switch (scriptState)
-	{
-	case 0:
-		scriptState++;
-
-		char fmt[7];
-		snprintf(fmt, 7, "%%2.%df,", userSettings.resolution);
-
-		len = sprintf(pBuffer + len, "%u,", (unsigned int)timeStamp++);
-		for (int n = 0; n < NR_NTCS; n++)
-		{
-			if (lastTemperature[n] == ERRORTEMP)
-				len += sprintf(pBuffer + len, "--,");
-			else
-				len += sprintf(pBuffer + len, fmt, (displayAverager[n].average() / 1000.0) - userSettings.temperatureOffset[n]);
-		}
-
 		len += sprintf(pBuffer + len, "\n");
 		return len;
-		break;
-	default:
-		break;
 	}
-	return 0;
-}
 
-void parseCGIWriteData(char *buf, int received)
-{
-	parseCGIsettings(buf, received);
-}
+	int getInfoValuesScript(char *pBuffer, int count)
+	{
+		int len = 0;
+		char str[10];
+		switch (scriptState)
+		{
+		case 0:
+			scriptState++;
+			len += sprintf(pBuffer + len, "%s\n", "Meting,Actueel,Offset");
+			for (int n = 0; n < NR_NTCS; n++)
+			{
+				sprintf(str, "Sensor %d", n + 1);
+				len += sprintf(pBuffer + len, "%s,%3.2f,%3.2f\n", str, lastTemperature[n] - userSettings.temperatureOffset[n],
+							   userSettings.temperatureOffset[n]); // send values and offset
+			};
+			return len;
+			break;
+		default:
+			break;
+		}
+		return 0;
+	}
+
+	// build javascript tables
+
+	int buildCalTable(char *pBuffer, int count)
+	{
+		int len = 0;
+		switch (scriptState)
+		{
+		case 0:
+			scriptState++;
+			len += sprintf(pBuffer + len, "%s\n", "Meting,Referentie,Stel in"); // header  table
+			len += sprintf(pBuffer + len, "%s\n", "Sensor 1,-\n Sensor 2,-\n Sensor 3,-\n Sensor 4,-");
+			return len;
+			break;
+		default:
+			break;
+		}
+		return 0;
+	}
+	int buildSettingsTable(char *pBuffer, int count)
+	{
+		int len = 0;
+		switch (scriptState)
+		{
+		case 0:
+			scriptState++;
+			len += sprintf(pBuffer + len, "%s\n", "Item,Waarde,Stel in"); // header  table
+			for (int n = 0; (settingsDescr[n].nrValues > 0); n++)
+			{ // loop over all settings names
+				len += sprintf(pBuffer + len, "%s,", settingsDescr[n].name);
+				switch (settingsDescr[n].varType)
+				{
+				case INT:
+					len += sprintf(pBuffer + len, "%d\n", *(int *)(settingsDescr[n].pValue));
+					break;
+				case FLT:
+					len += sprintf(pBuffer + len, "%3.2f\n", *(float *)(settingsDescr[n].pValue));
+					break;
+				case STR:
+					len += sprintf(pBuffer + len, "%s\n", (char *)(settingsDescr[n].pValue));
+					break;
+				default:
+					break;
+				}
+			}
+			return len;
+			break;
+		default:
+			break;
+		}
+		return 0;
+	}
+
+	int saveSettingsScript(char *pBuffer, int count)
+	{
+		saveSettings();
+		return 0;
+	}
+
+	int cancelSettingsScript(char *pBuffer, int count)
+	{
+		loadSettings();
+		return 0;
+	}
+
+	calValues_t calValues = {NOCAL, NOCAL, NOCAL, NOCAL};
+	// @formatter:off
+	char tempName[MAX_STRLEN];
+
+	const CGIdesc_t writeVarDescriptors[] = {{"Temperatuur", &calValues.temperature, FLT, NR_NTCS}, {"moduleName", tempName, STR, 1}};
+
+#define NR_CALDESCRIPTORS (sizeof(writeVarDescriptors) / sizeof(CGIdesc_t))
+	// @formatter:on
+
+	int getRTMeasValuesScript(char *pBuffer, int count)
+	{
+		int len = 0;
+
+		switch (scriptState)
+		{
+		case 0:
+			scriptState++;
+
+			char fmt[7];
+			snprintf(fmt, 7, "%%2.%df,", userSettings.resolution);
+
+			len = sprintf(pBuffer + len, "%u,", (unsigned int)timeStamp++);
+			for (int n = 0; n < NR_NTCS; n++)
+			{
+				if (lastTemperature[n] == ERRORTEMP)
+					len += sprintf(pBuffer + len, "--,");
+				else
+					len += sprintf(pBuffer + len, fmt, (displayAverager[n].average() / 1000.0) - userSettings.temperatureOffset[n]);
+			}
+
+			len += sprintf(pBuffer + len, "\n");
+			return len;
+			break;
+		default:
+			break;
+		}
+		return 0;
+	}
+
+	void parseCGIWriteData(char *buf, int received)
+	{
+		parseCGIsettings(buf, received);
+	}
 
 #endif
