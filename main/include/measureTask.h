@@ -50,7 +50,7 @@
 #define CHARGETIME 200 // ms
 #define RCTIMEOUT 300  // ms
 
-#define MEASINTERVAL 5 // interval for sensor in seconds
+#define MEASINTERVAL 1 // interval for sensor in seconds
 #define LOGINTERVAL 5  // minutes
 #define AVGERAGESAMPLES ((LOGINTERVAL * 60) / (MEASINTERVAL))
 #define FIRSTORDERAVERAGES 4

@@ -123,7 +123,8 @@ void guiTask(void *pvParameter) {
 		if (xQueueReceive(displayMssgBox, (void *const)&recDdisplayMssg, portMAX_DELAY) == pdTRUE) {
 			int line = recDdisplayMssg.line-1;
 			lvgl_port_lock(0);
-			printf("line: %d, str1: %s\n", line, recDdisplayMssg.text);
+		//	printf("line: %d, str1: %s\n", line, recDdisplayMssg.text);
+			vTaskDelay(1);
 			if (line <= 3) {
 				lv_label_set_text_fmt(measvalueLabel[line], recDdisplayMssg.text);
 			} else {
