@@ -3,8 +3,6 @@
 
 #include "ntc.h"
 
-float a, b, c, d;
-
 float calcTemp(float fRntc)
 {
 	double temp;

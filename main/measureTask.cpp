@@ -23,15 +23,11 @@
 
 #include "averager.h"
 #include "guiTask.h"
-#include "log.h"
-#include "main.h"
-#include "measureTask.h"
 #include "ntc.h"
-#include "settings.h"
-#include "stdev.h"
+#include "measureTask.h"
+#include "log.h"
 
 #define ADDCGI
-
 
 #ifdef ADDCGI
 #include "mdns.h"
@@ -56,7 +52,7 @@ static const char *TAG = "measureTask";
 
 extern float tmpTemperature;
 extern int scriptState;
-
+extern uint32_t timeStamp;
 
 
 Averager firstOrderAverager[NR_NTCS]; // first order
@@ -303,7 +299,7 @@ void measureTask(void *pvParameters)
 				localtime_r(&now, &timeinfo);
 				if (lastminute != timeinfo.tm_min)
 				{
-					lastminute = timeinfo.tm_min; // every minute
+					lastminute = timeinfo.tm_min; // every minuteuint32_t timeStamp;
 					if (--logPrescaler <= 0)
 					{
 						for (int n = 0; n < NR_NTCS; n++)

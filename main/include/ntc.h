@@ -2,10 +2,6 @@
 #define NTCH
 
 float calcTemp(float fRntc);
-float calcNTC(uint32_t adcVal);
-float updateNTC(uint32_t ID, uint32_t adcVal);
-float resToTemp(float Rntc);
-
 extern float NTCreferenceValue;
 #define ERRORTEMP -9999.0
 

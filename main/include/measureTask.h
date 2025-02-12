@@ -17,7 +17,7 @@
 
 // #define SIMULATE 		1
 
-#define REFAVERAGES 16
+#define REFAVERAGES 3
 #define DISPLAYAVERAGES 8
 
 // #define RREF			10000.0			// in ohms
