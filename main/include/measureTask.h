@@ -20,19 +20,19 @@
 #define REFAVERAGES 3
 #define DISPLAYAVERAGES 8
 
-// #define RREF			10000.0			// in ohms
+#define RREF 10000.0 // in ohms
 
-#define RREF 10071.0 // in ohms
+// #define RREF 10071.0 // in ohms
 
 #define CAP_PIN GPIO_NUM_4
-#define COMPARATOR_PIN GPIO_NUM_1     // change also in irq.S !
+#define COMPARATOR_PIN GPIO_NUM_1 // change also in irq.S !
 
- #define RREF_PIN GPIO_NUM_5
+#define RREF_PIN GPIO_NUM_5
 
-#define NTC1_PIN GPIO_NUM_6
-#define NTC2_PIN GPIO_NUM_7
-#define NTC3_PIN GPIO_NUM_17
-#define NTC4_PIN GPIO_NUM_18
+// #define NTC1_PIN GPIO_NUM_6
+// #define NTC2_PIN GPIO_NUM_7
+// #define NTC3_PIN GPIO_NUM_17
+// #define NTC4_PIN GPIO_NUM_18
 
 // test for system , measuring same resistor
 //  #define NTC1_PIN		GPIO_NUM_6
@@ -40,10 +40,10 @@
 //  #define NTC3_PIN		GPIO_NUM_6//   17
 //  #define NTC4_PIN		GPIO_NUM_6//18
 
-//  #define NTC1_PIN		GPIO_NUM_5
-//  #define NTC2_PIN		GPIO_NUM_5//7
-//  #define NTC3_PIN		GPIO_NUM_5//   17
-//  #define NTC4_PIN		GPIO_NUM_5//18
+#define NTC1_PIN GPIO_NUM_5
+#define NTC2_PIN GPIO_NUM_5 // 7
+#define NTC3_PIN GPIO_NUM_5 //   17
+#define NTC4_PIN GPIO_NUM_5 // 18
 
 #define RSERIES 270 // resistors in series with NTC
 
@@ -63,11 +63,11 @@ void measureTask(void *pvParameters);
 extern float refTemperature;
 extern bool sensorDataIsSend;
 
-extern SemaphoreHandle_t
-    measureSemaphore; // to prevent from small influences on IRQ
+extern SemaphoreHandle_t measureSemaphore; // to prevent from small influences on IRQ
 
-typedef struct {
-  float temperature[NR_NTCS];
+typedef struct
+{
+	float temperature[NR_NTCS];
 } calValues_t;
 
 int getRTMeasValuesScript(char *pBuffer, int count);

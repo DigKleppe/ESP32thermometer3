@@ -18,12 +18,12 @@
 #include "esp_netif.h"
 #include "nvs_flash.h"
 
+#include "LCD.h"
+#include "guiTask.h"
 #include "mdns.h"
 #include "settings.h"
 #include "spiffs.h"
 #include "wifiConnect.h"
-#include "LCD.h"
-#include "guiTask.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -51,7 +51,7 @@ extern "C"
 		uint32_t upTime = 0;
 		bool toggle = false;
 		TimerHandle_t xTimer;
-	
+
 		gpio_set_direction(LED_PIN, GPIO_MODE_OUTPUT);
 		gpio_set_level(LED_PIN, 0);
 
@@ -78,8 +78,8 @@ extern "C"
 
 		vTaskDelay(500 / portTICK_PERIOD_MS);
 		xTaskCreate(&guiTask, "guiTask", 1024 * 8, NULL, 0, NULL);
-		xTaskCreatePinnedToCore(&measureTask, "measureTask", 3500, NULL, 2, NULL,1);
-		wifiConnect();
+		xTaskCreatePinnedToCore(&measureTask, "measureTask", 3500, NULL, 2, NULL, 1);
+		//		wifiConnect();
 
 		displayMssg.line = 5;
 		displayMssg.showTime = 0;
@@ -99,12 +99,13 @@ extern "C"
 				toggle = !toggle;
 				gpio_set_level(LED_PIN, toggle);
 
-				displayMssg.text = (char *) malloc(MAXSTRLEN);
-				if ( displayMssg.text == NULL)
+				displayMssg.text = (char *)malloc(MAXSTRLEN);
+				if (displayMssg.text == NULL)
 					ESP_LOGE(TAG, "malloc failed");
-				else {
+				else
+				{
 					snprintf(displayMssg.text, MAXSTRLEN, "Verbinden met %s", wifiSettings.SSID);
-		 		xQueueSend(displayMssgBox, &displayMssg,portMAX_DELAY);
+					xQueueSend(displayMssgBox, &displayMssg, portMAX_DELAY);
 				}
 			}
 			else
@@ -116,14 +117,15 @@ extern "C"
 					wifiSettings.updated = false;
 					saveSettings();
 				}
-				displayMssg.text = (char *) malloc(MAXSTRLEN);
-				if ( displayMssg.text == NULL)
+				displayMssg.text = (char *)malloc(MAXSTRLEN);
+				if (displayMssg.text == NULL)
 					ESP_LOGE(TAG, "malloc failed");
-				else {
+				else
+				{
 					snprintf(displayMssg.text, MAXSTRLEN, "%s  %s  %s", wifiSettings.SSID, myIpAddress, userSettings.moduleName);
-	
+
 					xQueueSend(displayMssgBox, &displayMssg, portMAX_DELAY);
-				}			
+				}
 			}
 		}
 	}
